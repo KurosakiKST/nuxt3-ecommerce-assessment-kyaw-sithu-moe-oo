@@ -55,6 +55,8 @@
               <span>Subtotal:</span>
               <span>${{ subtotal.toFixed(2) }}</span>
             </div>
+
+            <!-- TODO: Show tax amount here if needed -->
             
             <div class="summary-row">
               <span>Discount:</span>
@@ -67,7 +69,7 @@
             </div>
             
             <div class="summary-row total-row">
-              <span>Total:</span>
+              <span>Estimated Total:</span>
               <span class="total-amount">${{ total.toFixed(2) }}</span>
             </div>
             
@@ -308,10 +310,6 @@ const RemoveIcon = () => h('svg', {
   padding-top: 0.75rem;
   border-top: 1px solid var(--border-color);
   margin-top: 1rem;
-}
-
-.discount-amount {
-  color: var(--success-color);
 }
 
 .total-amount {

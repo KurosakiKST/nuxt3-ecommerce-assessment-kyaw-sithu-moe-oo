@@ -173,6 +173,10 @@
                 <span>Subtotal:</span>
                 <span>${{ subtotal.toFixed(2) }}</span>
               </div>
+              <div v-if="discount > 0" class="summary-row">
+                <span>Discount:</span>
+                <span class="discount-amount">-${{ discount.toFixed(2) }}</span>
+              </div>
               <div class="summary-row">
                 <span>Shipping:</span>
                 <span>Free</span>
@@ -215,8 +219,10 @@ const shippingForm = reactive({
   zipCode: ''
 })
 
+const { discount } = storeToRefs(cartStore)
+
 const tax = computed(() => subtotal.value * 0.08) // 8% tax
-const finalTotal = computed(() => subtotal.value + tax.value)
+const finalTotal = computed(() => subtotal.value - discount.value + tax.value)
 
 const nextStep = () => {
   if (step.value < 3) {
