@@ -10,26 +10,24 @@ export const useCartStore = defineStore('cart', {
   getters: {
     itemCount: (state) => state.items.reduce((sum, item) => sum + item.quantity, 0),
     
-    // Intentional bug: incorrect calculation
-    total: (state) => {
-      return state.items.reduce((sum, item) => {
-        // Bug: Should multiply by quantity, but we're adding it instead
-        const itemTotal = item.product.price + item.quantity
-        return sum + itemTotal
-      }, 0)
-    },
-    
+    // Subtotal = price * quantity for each item
     subtotal: (state) => {
       return state.items.reduce((sum, item) => {
         return sum + (item.product.price * item.quantity)
       }, 0)
     },
     
+    // Discount = (price * quantity * discountPercentage) for each item
     discount: (state) => {
       return state.items.reduce((sum, item) => {
         const discount = (item.product.price * item.quantity * item.product.discountPercentage) / 100
         return sum + discount
       }, 0)
+    },
+    
+    // Total = Subtotal - Discount
+    total(): number {
+      return this.subtotal - this.discount
     }
   },
 
