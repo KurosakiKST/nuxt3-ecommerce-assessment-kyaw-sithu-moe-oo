@@ -12,10 +12,13 @@
     <section class="products-section">
       <div class="container">
         <h2>All Products</h2>
-
+        
+        <!-- Search and Filter Section -->
         <div class="card mb-4">
           <div class="card-body">
-            <div class="form-group mb-2">
+            <!-- Search Input -->
+            <div class="form-group mb-3">
+              <label class="form-label">Search Products</label>
               <div class="search-box">
                 <input
                   v-model="searchQuery"
@@ -34,9 +37,37 @@
                 </button>
               </div>
             </div>
-            <p v-if="searchQuery" class="text-muted mb-0">
-              Searching for: "{{ searchQuery }}"
-            </p>
+            
+            <!-- Category Filter -->
+            <div class="form-group mb-2">
+              <label class="form-label">Filter by Category</label>
+              <select 
+                v-model="selectedCategory" 
+                @change="onCategoryChange"
+                class="form-select"
+              >
+                <option value="">All Categories</option>
+                <option 
+                  v-for="category in categories" 
+                  :key="category.slug" 
+                  :value="category.slug"
+                >
+                  {{ category.name }}
+                </option>
+              </select>
+            </div>
+            
+            <!-- Active Filters Display -->
+            <div v-if="searchQuery || selectedCategory" class="flex gap-2 flex-wrap">
+              <span class="badge badge-primary" v-if="searchQuery">
+                Search: "{{ searchQuery }}"
+                <button @click="clearSearch" class="ml-1">✕</button>
+              </span>
+              <span class="badge badge-secondary" v-if="selectedCategory">
+                Category: {{ getCategoryDisplayName(selectedCategory) }}
+                <button @click="clearCategory" class="ml-1">✕</button>
+              </span>
+            </div>
           </div>
         </div>
         
@@ -56,15 +87,35 @@
             <p class="text-muted">
               Showing {{ products.length }} products
               <span v-if="searchQuery"> for "{{ searchQuery }}"</span>
+              <span v-if="selectedCategory"> in {{ getCategoryDisplayName(selectedCategory) }}</span>
             </p>
           </div>
           
+          <!-- No Results State -->
           <div v-if="products.length === 0" class="text-center p-4">
             <h3>No products found</h3>
-            <p v-if="searchQuery" class="text-muted">
-              Try different keywords or 
-              <button @click="clearSearch" class="btn btn-outline">Clear Search</button>
+            <p class="text-muted">
+              <span v-if="searchQuery && selectedCategory">
+                No products match "{{ searchQuery }}" in {{ getCategoryDisplayName(selectedCategory) }}.
+              </span>
+              <span v-else-if="searchQuery">
+                No products match "{{ searchQuery }}".
+              </span>
+              <span v-else-if="selectedCategory">
+                No products found in {{ getCategoryDisplayName(selectedCategory) }}.
+              </span>
+              <span v-else>
+                No products available.
+              </span>
             </p>
+            <div class="flex gap-2 justify-center mt-3">
+              <button v-if="searchQuery" @click="clearSearch" class="btn btn-outline">
+                Clear Search
+              </button>
+              <button v-if="selectedCategory" @click="clearCategory" class="btn btn-outline">
+                Clear Category
+              </button>
+            </div>
           </div>
           
           <div v-else class="grid grid-cols-4 gap-3">
@@ -81,19 +132,23 @@
 </template>
 
 <script setup lang="ts">
-import type { Product } from '~/types'
+import type { Product, Category } from '~/types'
 
-const { getAllProducts, searchProducts } = useProducts()
+const { getAllProducts, searchProducts, getCategories, getProductsByCategory } = useProducts()
 const route = useRoute()
 const router = useRouter()
 
 const products = ref<Product[]>([])
+const categories = ref<Category[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
+const selectedCategory = ref('')
 
+// Debouncing variables
 let searchTimeout: NodeJS.Timeout
 
+// Fetch products function
 const fetchProducts = async () => {
   try {
     loading.value = true
@@ -101,16 +156,39 @@ const fetchProducts = async () => {
     
     console.log('Fetching products...')
     console.log('Search query:', searchQuery.value)
+    console.log('Selected category:', selectedCategory.value)
     
     let response
-    if (searchQuery.value.trim()) {
-      response = await searchProducts(searchQuery.value, { limit: 12 })
-      console.log('Search API Response:', response)
+    
+    // Priority: Search + Category > Search only > Category only > All products
+    if (searchQuery.value.trim() && selectedCategory.value) {
+      // Search within a specific category
+      console.log('Searching within category')
+      response = await getProductsByCategory(selectedCategory.value, { limit: 50 })
+      // Filter search results on client side
+      const searchTerm = searchQuery.value.toLowerCase()
+      response.products = response.products.filter(product =>
+        product.title.toLowerCase().includes(searchTerm) ||
+        product.description.toLowerCase().includes(searchTerm)
+      )
+      response.total = response.products.length
+    } else if (searchQuery.value.trim()) {
+      // Search only
+      console.log('Search only')
+      response = await searchProducts(searchQuery.value, { limit: 50 })
+    } else if (selectedCategory.value) {
+      // Category only - use the original kebab-case format
+      console.log('Category only')
+      const categoryForAPI = selectedCategory.value
+      console.log('Using category for API:', categoryForAPI)
+      response = await getProductsByCategory(categoryForAPI, { limit: 50 })
     } else {
-      response = await getAllProducts({ limit: 12 })
-      console.log('All Products API Response:', response)
+      // All products
+      console.log('All products')
+      response = await getAllProducts({ limit: 50 })
     }
     
+    console.log('API Response:', response)
     products.value = response.products
     
   } catch (err: any) {
@@ -121,11 +199,26 @@ const fetchProducts = async () => {
   }
 }
 
+// Load categories function
+const loadCategories = async () => {
+  try {
+    console.log('Loading categories...')
+    const categoriesData = await getCategories()
+    console.log('Categories loaded:', categoriesData)
+    categories.value = categoriesData
+  } catch (err) {
+    console.error('Failed to load categories:', err)
+  }
+}
+
+// Debounced search function
 const onSearchInput = () => {
   console.log('User typed:', searchQuery.value)
   
+  // Clear previous timeout
   clearTimeout(searchTimeout)
   
+  // Set new timeout for 500ms
   searchTimeout = setTimeout(() => {
     console.log('Debounced search triggered after 500ms')
     updateURL()
@@ -133,6 +226,22 @@ const onSearchInput = () => {
   }, 500)
 }
 
+// Category change handler
+const onCategoryChange = () => {
+  console.log('Category changed to:', selectedCategory.value)
+  updateURL()
+  fetchProducts()
+}
+
+// Clear category function
+const clearCategory = () => {
+  console.log('Clearing category')
+  selectedCategory.value = ''
+  updateURL()
+  fetchProducts()
+}
+
+// Clear search function
 const clearSearch = () => {
   console.log('Clearing search')
   searchQuery.value = ''
@@ -140,6 +249,13 @@ const clearSearch = () => {
   fetchProducts()
 }
 
+// Get category display name by slug
+const getCategoryDisplayName = (slug: string) => {
+  const category = categories.value.find(cat => cat.slug === slug)
+  return category ? category.name : slug
+}
+
+// URL management
 const updateURL = () => {
   const query: Record<string, string> = {}
   
@@ -147,10 +263,15 @@ const updateURL = () => {
     query.q = searchQuery.value
   }
   
+  if (selectedCategory.value) {
+    query.category = selectedCategory.value
+  }
+  
   console.log('Updating URL with query:', query)
   router.push({ query })
 }
 
+// Parse URL parameters
 const parseURLParams = () => {
   const query = route.query
   console.log('URL query params:', query)
@@ -159,14 +280,25 @@ const parseURLParams = () => {
     searchQuery.value = query.q as string
     console.log('Found search query in URL:', searchQuery.value)
   }
+  
+  if (query.category) {
+    selectedCategory.value = query.category as string
+    console.log('Found category in URL:', selectedCategory.value)
+  }
 }
 
+// Fetch products when component mounts
 onMounted(async () => {
   console.log('Products page mounted')
   
+  // Parse URL parameters first
   parseURLParams()
   
-  await fetchProducts()
+  // Load categories and products in parallel
+  await Promise.all([
+    loadCategories(),
+    fetchProducts()
+  ])
 })
 </script>
 
@@ -227,6 +359,19 @@ onMounted(async () => {
   background-color: #fee2e2;
 }
 
+.badge button {
+  background: none;
+  border: none;
+  color: inherit;
+  margin-left: 0.25rem;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.badge button:hover {
+  opacity: 1;
+}
+
 .products-info {
   margin-bottom: 2rem;
   text-align: center;
@@ -272,6 +417,9 @@ onMounted(async () => {
   border: 1px solid #fecaca;
 }
 
+/* Custom styles only for specific positioning */
+
+/* Mobile responsive - using utility classes where possible */
 @media (max-width: 768px) {
   .hero-content h1 {
     font-size: 2rem;

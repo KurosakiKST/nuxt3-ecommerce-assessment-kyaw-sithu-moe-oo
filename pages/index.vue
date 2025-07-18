@@ -105,12 +105,7 @@ onMounted(async () => {
   }
 
   try {
-    const categoryResponses = await getCategories()
-    categories.value = categoryResponses.map((cat: any) => ({
-      slug: cat.slug,
-      name: cat.name,
-      url: cat.url
-    }))
+    categories.value = await getCategories()
   } catch (err) {
     console.error('Failed to load categories:', err)
   } finally {
