@@ -364,7 +364,6 @@ onMounted(() => {
   color: #94a3b8;
 }
 
-/* Mobile Menu Bug - Intentionally broken */
 @media (max-width: 768px) {
   .mobile-menu-toggle {
     display: flex;
@@ -382,9 +381,8 @@ onMounted(() => {
     transition: left 0.3s ease;
   }
   
-  /* Bug: This should be .nav-menu.active but missing the active state toggle */
-  .nav-menu {
-    left: -100%;
+  .nav-menu.active {
+    left: 0;
   }
   
   .nav-actions {
