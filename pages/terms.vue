@@ -1,0 +1,1 @@
+<template><div>Terms Page</div></template>

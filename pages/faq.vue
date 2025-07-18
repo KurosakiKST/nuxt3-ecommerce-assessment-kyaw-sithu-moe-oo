@@ -1,0 +1,1 @@
+<template><div>FAQ Page</div></template>
