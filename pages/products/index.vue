@@ -1,130 +1,149 @@
 <template>
   <div class="products-page">
-    <section class="products-hero">
-      <div class="container">
-        <div class="hero-content">
-          <h1>Products</h1>
-          <p>Discover our wide range of quality products</p>
-        </div>
-      </div>
-    </section>
-
     <section class="products-section">
       <div class="container">
-        <h2>All Products</h2>
-        
-        <!-- Search and Filter Section -->
-        <div class="card mb-4">
-          <div class="card-body">
-            <!-- Search Input -->
-            <div class="form-group mb-3">
-              <label class="form-label">Search Products</label>
-              <div class="search-box">
-                <input
-                  v-model="searchQuery"
-                  type="text"
-                  placeholder="Search products..."
-                  class="form-input"
-                  @input="onSearchInput"
-                />
-                <button
-                  v-if="searchQuery"
-                  @click="clearSearch"
-                  class="clear-search"
-                  aria-label="Clear search"
-                >
-                  ✕
+        <!-- Search with quick filter for category -->
+        <div class="quick-filters-bar">
+          <SearchFilter
+            v-model="searchQuery"
+            placeholder="Search products..."
+            @search="handleSearch"
+            @clear="handleClearSearch"
+          />
+          
+          <div class="quick-controls">
+            <select
+              v-model="quickCategory" 
+              @change="handleQuickCategoryChange"
+              class="filter-select"
+            >
+              <option value="">All Categories</option>
+              <option 
+                v-for="category in categories" 
+                :key="category.slug" 
+                :value="category.slug"
+              >
+                {{ category.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="products-layout">
+          <!-- Advanced Filters Sidebar -->
+          <AdvancedFilters
+            :filters="filters"
+            :categories="categories"
+            :available-brands="availableBrands"
+            :price-range="priceRange"
+            @update:filters="handleFiltersUpdate"
+            @clear-all="clearAllFilters"
+          />
+          
+          <!-- Main Content -->
+          <main class="products-main">
+            <!-- Active Filters Display -->
+            <ActiveFilters
+              :search-query="searchQuery"
+              :filters="filters"
+              :sort-by="sortBy"
+              :categories="categories"
+              :price-range="priceRange"
+              @clear-search="handleClearSearch"
+              @clear-category="clearCategory"
+              @clear-price="clearPriceFilter"
+              @clear-rating="clearRatingFilter"
+              @clear-sort="clearSort"
+              @remove-brand="removeBrand"
+              @clear-all="clearAllFilters"
+            />
+            
+            <!-- Results Header -->
+            <div class="results-header">
+              <div class="results-info">
+                <h2>{{ filteredProducts.length }} Products</h2>
+                <p class="text-muted">
+                  Showing {{ paginatedProducts.length }} of {{ filteredProducts.length }} products
+                </p>
+              </div>
+              
+              <!-- View and Sort Controls -->
+              <div class="controls-group">
+                <!-- View Toggle -->
+                <div class="view-toggle">
+                  <button
+                    @click="viewMode = 'grid'"
+                    :class="['view-btn', { active: viewMode === 'grid' }]"
+                    title="Grid View"
+                  >
+                    ⊞
+                  </button>
+                  <button
+                    @click="viewMode = 'list'"
+                    :class="['view-btn', { active: viewMode === 'list' }]"
+                    title="List View"
+                  >
+                    ☰
+                  </button>
+                </div>
+                
+                <!-- Sort Options -->
+                <div class="sort-controls">
+                  <select v-model="sortBy" @change="applySorting" class="sort-select">
+                    <option value="">Sort by: Featured</option>
+                    <option value="price-low">Sort by: Price Low-High</option>
+                    <option value="price-high">Sort by: Price High-Low</option>
+                    <option value="rating">Sort by: Highest Rated</option>
+                    <option value="name">Sort by: Name A-Z</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Loading State -->
+            <div v-if="loading" class="loading-container">
+              <div class="spinner"></div>
+              <p>Loading products...</p>
+            </div>
+            
+            <!-- Error State -->
+            <div v-else-if="error" class="error-container">
+              <div class="alert alert-error">
+                {{ error }}
+                <button @click="fetchProducts" class="btn btn-primary mt-2">
+                  Try Again
                 </button>
               </div>
             </div>
             
-            <!-- Category Filter -->
-            <div class="form-group mb-2">
-              <label class="form-label">Filter by Category</label>
-              <select 
-                v-model="selectedCategory" 
-                @change="onCategoryChange"
-                class="form-select"
-              >
-                <option value="">All Categories</option>
-                <option 
-                  v-for="category in categories" 
-                  :key="category.slug" 
-                  :value="category.slug"
-                >
-                  {{ category.name }}
-                </option>
-              </select>
+            <!-- No Results -->
+            <div v-else-if="filteredProducts.length === 0" class="no-results">
+              <h3>No products found</h3>
+              <p>Try adjusting your filters or search terms.</p>
+              <button @click="clearAllFilters" class="btn btn-outline">
+                Clear All Filters
+              </button>
             </div>
             
-            <!-- Active Filters Display -->
-            <div v-if="searchQuery || selectedCategory" class="flex gap-2 flex-wrap">
-              <span class="badge badge-primary" v-if="searchQuery">
-                Search: "{{ searchQuery }}"
-                <button @click="clearSearch" class="ml-1">✕</button>
-              </span>
-              <span class="badge badge-secondary" v-if="selectedCategory">
-                Category: {{ getCategoryDisplayName(selectedCategory) }}
-                <button @click="clearCategory" class="ml-1">✕</button>
-              </span>
+            <!-- Products Grid/List -->
+            <div v-else :class="['products-container', viewMode]">
+              <ProductCard
+                v-for="product in paginatedProducts"
+                :key="product.id"
+                :product="product"
+                :class="{ 'list-view': viewMode === 'list' }"
+              />
             </div>
-          </div>
-        </div>
-        
-        <div v-if="loading" class="loading-container">
-          <div class="spinner"></div>
-        </div>
-        
-        <div v-else-if="error" class="alert alert-error">
-          {{ error }}
-          <button @click="fetchProducts" class="btn btn-primary" style="margin-top: 1rem;">
-            Try Again
-          </button>
-        </div>
-        
-        <div v-else>
-          <div class="text-center mb-3">
-            <p class="text-muted">
-              Showing {{ products.length }} products
-              <span v-if="searchQuery"> for "{{ searchQuery }}"</span>
-              <span v-if="selectedCategory"> in {{ getCategoryDisplayName(selectedCategory) }}</span>
-            </p>
-          </div>
-          
-          <!-- No Results State -->
-          <div v-if="products.length === 0" class="text-center p-4">
-            <h3>No products found</h3>
-            <p class="text-muted">
-              <span v-if="searchQuery && selectedCategory">
-                No products match "{{ searchQuery }}" in {{ getCategoryDisplayName(selectedCategory) }}.
-              </span>
-              <span v-else-if="searchQuery">
-                No products match "{{ searchQuery }}".
-              </span>
-              <span v-else-if="selectedCategory">
-                No products found in {{ getCategoryDisplayName(selectedCategory) }}.
-              </span>
-              <span v-else>
-                No products available.
-              </span>
-            </p>
-            <div class="flex gap-2 justify-center mt-3">
-              <button v-if="searchQuery" @click="clearSearch" class="btn btn-outline">
-                Clear Search
-              </button>
-              <button v-if="selectedCategory" @click="clearCategory" class="btn btn-outline">
-                Clear Category
-              </button>
-            </div>
-          </div>
-          
-          <div v-else class="grid grid-cols-4 gap-3">
-            <ProductCard
-              v-for="product in products"
-              :key="product.id"
-              :product="product"
+            
+            <!-- Pagination -->
+            <ProductsPagination
+              v-if="totalPages > 1"
+              :current-page="currentPage"
+              :total-pages="totalPages"
+              :total-products="filteredProducts.length"
+              @page-change="goToPage"
             />
-          </div>
+          </main>
         </div>
       </div>
     </section>
@@ -134,171 +153,283 @@
 <script setup lang="ts">
 import type { Product, Category } from '~/types'
 
+import SearchFilter from '~/components/SearchFilter.vue'
+import AdvancedFilters from '~/components/AdvancedFilters.vue'
+import ActiveFilters from '~/components/ActiveFilters.vue'
+
 const { getAllProducts, searchProducts, getCategories, getProductsByCategory } = useProducts()
 const route = useRoute()
 const router = useRouter()
+
+interface FilterState {
+  selectedCategory: string
+  minPrice: number
+  maxPrice: number
+  selectedBrands: string[]
+  minRating: number
+}
 
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
-const selectedCategory = ref('')
+const quickCategory = ref('')
+const sortBy = ref('')
+const viewMode = ref<'grid' | 'list'>('grid')
+const currentPage = ref(1)
+const itemsPerPage = 12
 
-// Debouncing variables
-let searchTimeout: NodeJS.Timeout
+const filters = reactive<FilterState>({
+  selectedCategory: '',
+  minPrice: 0,
+  maxPrice: 2000,
+  selectedBrands: [],
+  minRating: 0
+})
 
-// Fetch products function
+// Computed properties
+const availableBrands = computed(() => {
+  const brands = new Set(
+    products.value
+      .map(product => product.brand)
+      .filter(brand => brand && brand.trim() !== '')
+  )
+  return Array.from(brands).sort()
+})
+
+const priceRange = computed(() => {
+  if (products.value.length === 0) return { min: 0, max: 2000 }
+  
+  const prices = products.value.map(product => 
+    product.price - (product.price * product.discountPercentage / 100)
+  )
+  return {
+    min: Math.floor(Math.min(...prices)),
+    max: Math.ceil(Math.max(...prices))
+  }
+})
+
+const filteredProducts = computed(() => {
+  let filtered = [...products.value]
+  
+  // Price filter
+  if (filters.minPrice > priceRange.value.min || filters.maxPrice < priceRange.value.max) {
+    filtered = filtered.filter(product => {
+      const price = product.price - (product.price * product.discountPercentage / 100)
+      return price >= filters.minPrice && price <= filters.maxPrice
+    })
+  }
+  
+  // Brand filter
+  if (filters.selectedBrands.length > 0) {
+    filtered = filtered.filter(product => 
+      filters.selectedBrands.includes(product.brand)
+    )
+  }
+  
+  // Rating filter
+  if (filters.minRating > 0) {
+    filtered = filtered.filter(product => product.rating >= filters.minRating)
+  }
+  
+  return filtered
+})
+
+const sortedProducts = computed(() => {
+  if (!sortBy.value) return filteredProducts.value
+  
+  const sorted = [...filteredProducts.value]
+  
+  switch (sortBy.value) {
+    case 'price-low':
+      return sorted.sort((a, b) => a.price - b.price)
+    case 'price-high':
+      return sorted.sort((a, b) => b.price - a.price)
+    case 'rating':
+      return sorted.sort((a, b) => b.rating - a.rating)
+    case 'name':
+      return sorted.sort((a, b) => a.title.localeCompare(b.title))
+    default:
+      return sorted
+  }
+})
+
+// Pagination computed properties
+const totalPages = computed(() => Math.ceil(sortedProducts.value.length / itemsPerPage))
+
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return sortedProducts.value.slice(start, end)
+})
+
+// Event handlers
+const handleSearch = (query: string) => {
+  searchQuery.value = query
+  currentPage.value = 1
+  fetchProducts()
+  updateURL()
+}
+
+const handleClearSearch = () => {
+  searchQuery.value = ''
+  fetchProducts()
+  updateURL()
+}
+
+const handleQuickCategoryChange = () => {
+  filters.selectedCategory = quickCategory.value
+  currentPage.value = 1
+  fetchProducts()
+  updateURL()
+}
+
+const handleFiltersUpdate = (newFilters: FilterState) => {
+  Object.assign(filters, newFilters)
+  quickCategory.value = newFilters.selectedCategory
+  currentPage.value = 1
+  fetchProducts()
+  updateURL()
+}
+
+// Methods
 const fetchProducts = async () => {
   try {
     loading.value = true
     error.value = null
     
-    console.log('Fetching products...')
-    console.log('Search query:', searchQuery.value)
-    console.log('Selected category:', selectedCategory.value)
-    
     let response
     
-    // Priority: Search + Category > Search only > Category only > All products
-    if (searchQuery.value.trim() && selectedCategory.value) {
-      // Search within a specific category
-      console.log('Searching within category')
-      response = await getProductsByCategory(selectedCategory.value, { limit: 50 })
-      // Filter search results on client side
+    // Get 100 Products max only
+    if (searchQuery.value.trim() && filters.selectedCategory) {
+      response = await getProductsByCategory(filters.selectedCategory, { limit: 100 })
       const searchTerm = searchQuery.value.toLowerCase()
       response.products = response.products.filter(product =>
         product.title.toLowerCase().includes(searchTerm) ||
         product.description.toLowerCase().includes(searchTerm)
       )
-      response.total = response.products.length
     } else if (searchQuery.value.trim()) {
-      // Search only
-      console.log('Search only')
-      response = await searchProducts(searchQuery.value, { limit: 50 })
-    } else if (selectedCategory.value) {
-      // Category only - use the original kebab-case format
-      console.log('Category only')
-      const categoryForAPI = selectedCategory.value
-      console.log('Using category for API:', categoryForAPI)
-      response = await getProductsByCategory(categoryForAPI, { limit: 50 })
+      response = await searchProducts(searchQuery.value, { limit: 100 })
+    } else if (filters.selectedCategory) {
+      response = await getProductsByCategory(filters.selectedCategory, { limit: 100 })
     } else {
-      // All products
-      console.log('All products')
-      response = await getAllProducts({ limit: 50 })
+      response = await getAllProducts({ limit: 100 })
     }
     
-    console.log('API Response:', response)
     products.value = response.products
     
   } catch (err: any) {
-    console.error('Error fetching products:', err)
     error.value = err.message || 'Failed to load products'
   } finally {
     loading.value = false
   }
 }
 
-// Load categories function
 const loadCategories = async () => {
   try {
-    console.log('Loading categories...')
-    const categoriesData = await getCategories()
-    console.log('Categories loaded:', categoriesData)
-    categories.value = categoriesData
+    categories.value = await getCategories()
   } catch (err) {
     console.error('Failed to load categories:', err)
   }
 }
 
-// Debounced search function
-const onSearchInput = () => {
-  console.log('User typed:', searchQuery.value)
-  
-  // Clear previous timeout
-  clearTimeout(searchTimeout)
-  
-  // Set new timeout for 500ms
-  searchTimeout = setTimeout(() => {
-    console.log('Debounced search triggered after 500ms')
-    updateURL()
-    fetchProducts()
-  }, 500)
-}
-
-// Category change handler
-const onCategoryChange = () => {
-  console.log('Category changed to:', selectedCategory.value)
+const applySorting = () => {
   updateURL()
-  fetchProducts()
 }
 
-// Clear category function
+// Clear functions
 const clearCategory = () => {
-  console.log('Clearing category')
-  selectedCategory.value = ''
-  updateURL()
+  filters.selectedCategory = ''
+  quickCategory.value = ''
   fetchProducts()
+  updateURL()
 }
 
-// Clear search function
-const clearSearch = () => {
-  console.log('Clearing search')
+const clearPriceFilter = () => {
+  filters.minPrice = priceRange.value.min
+  filters.maxPrice = priceRange.value.max
+  updateURL()
+}
+
+const clearRatingFilter = () => {
+  filters.minRating = 0
+  updateURL()
+}
+
+const clearSort = () => {
+  sortBy.value = ''
+  updateURL()
+}
+
+const removeBrand = (brand: string) => {
+  const index = filters.selectedBrands.indexOf(brand)
+  if (index > -1) {
+    filters.selectedBrands.splice(index, 1)
+    updateURL()
+  }
+}
+
+const clearAllFilters = () => {
   searchQuery.value = ''
-  updateURL()
+  quickCategory.value = ''
+  filters.selectedCategory = ''
+  filters.minPrice = priceRange.value.min
+  filters.maxPrice = priceRange.value.max
+  filters.selectedBrands = []
+  filters.minRating = 0
+  sortBy.value = ''
+  currentPage.value = 1
   fetchProducts()
+  updateURL()
 }
 
-// Get category display name by slug
-const getCategoryDisplayName = (slug: string) => {
-  const category = categories.value.find(cat => cat.slug === slug)
-  return category ? category.name : slug
+// Pagination methods
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+    updateURL()
+    // Scroll to top of products
+    document.querySelector('.products-main')?.scrollIntoView({ behavior: 'smooth' })
+  }
 }
 
 // URL management
 const updateURL = () => {
   const query: Record<string, string> = {}
   
-  if (searchQuery.value.trim()) {
-    query.q = searchQuery.value
-  }
+  if (searchQuery.value.trim()) query.q = searchQuery.value
+  if (filters.selectedCategory) query.category = filters.selectedCategory
+  if (filters.minPrice > priceRange.value.min) query.minPrice = filters.minPrice.toString()
+  if (filters.maxPrice < priceRange.value.max) query.maxPrice = filters.maxPrice.toString()
+  if (filters.selectedBrands.length > 0) query.brands = filters.selectedBrands.join(',')
+  if (filters.minRating > 0) query.rating = filters.minRating.toString()
+  if (sortBy.value) query.sort = sortBy.value
+  if (currentPage.value > 1) query.page = currentPage.value.toString()
   
-  if (selectedCategory.value) {
-    query.category = selectedCategory.value
-  }
-  
-  console.log('Updating URL with query:', query)
   router.push({ query })
 }
 
-// Parse URL parameters
 const parseURLParams = () => {
   const query = route.query
-  console.log('URL query params:', query)
   
-  if (query.q) {
-    searchQuery.value = query.q as string
-    console.log('Found search query in URL:', searchQuery.value)
-  }
-  
+  if (query.q) searchQuery.value = query.q as string
   if (query.category) {
-    selectedCategory.value = query.category as string
-    console.log('Found category in URL:', selectedCategory.value)
+    filters.selectedCategory = query.category as string
+    quickCategory.value = query.category as string
   }
+  if (query.minPrice) filters.minPrice = parseInt(query.minPrice as string) || 0
+  if (query.maxPrice) filters.maxPrice = parseInt(query.maxPrice as string) || 2000
+  if (query.brands) filters.selectedBrands = (query.brands as string).split(',').filter(Boolean)
+  if (query.rating) filters.minRating = parseFloat(query.rating as string) || 0
+  if (query.sort) sortBy.value = query.sort as string
+  if (query.page) currentPage.value = parseInt(query.page as string) || 1
 }
 
-// Fetch products when component mounts
+// Initialize
 onMounted(async () => {
-  console.log('Products page mounted')
-  
-  // Parse URL parameters first
   parseURLParams()
-  
-  // Load categories and products in parallel
-  await Promise.all([
-    loadCategories(),
-    fetchProducts()
-  ])
+  await Promise.all([loadCategories(), fetchProducts()])
 })
 </script>
 
@@ -307,86 +438,157 @@ onMounted(async () => {
   min-height: 100vh;
 }
 
-.products-hero {
-  background: linear-gradient(135deg, var(--primary-color), #1d4ed8);
-  color: white;
-  padding: 4rem 0;
-  text-align: center;
-}
-
-.hero-content h1 {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
-  color: white;
-}
-
-.hero-content p {
-  font-size: 1.25rem;
-  margin-bottom: 0;
-  opacity: 0.9;
-}
-
 .products-section {
-  padding: 4rem 0;
+  padding: 1rem 0;
 }
 
-.products-section h2 {
-  text-align: center;
+/* Quick Filters Bar */
+.quick-filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
+  flex-wrap: wrap;
 }
 
-.search-box {
-  position: relative;
+.quick-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
-.clear-search {
-  position: absolute;
-  right: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  color: var(--text-light);
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 50%;
-  transition: all 0.3s ease;
+.filter-select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: white;
+  font-size: 0.9rem;
+  min-width: 150px;
 }
 
-.clear-search:hover {
-  color: var(--danger-color);
-  background-color: #fee2e2;
-}
-
-.badge button {
-  background: none;
-  border: none;
-  color: inherit;
-  margin-left: 0.25rem;
-  cursor: pointer;
-  opacity: 0.8;
-}
-
-.badge button:hover {
-  opacity: 1;
-}
-
-.products-info {
-  margin-bottom: 2rem;
-  text-align: center;
-  color: var(--text-light);
-}
-
-.products-grid {
+/* Layout */
+.products-layout {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 250px 1fr;
   gap: 2rem;
+  align-items: start;
 }
 
+/* Main Content */
+.products-main {
+  min-height: 500px;
+}
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.results-info h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.5rem;
+}
+
+.results-info p {
+  margin: 0;
+}
+
+.controls-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* View Toggle */
+.view-toggle {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.view-btn {
+  padding: 0.5rem 0.75rem;
+  background: white;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+  border-right: 1px solid var(--border-color);
+}
+
+.view-btn:last-child {
+  border-right: none;
+}
+
+.view-btn:hover {
+  background: var(--light-color);
+}
+
+.view-btn.active {
+  background: var(--primary-color);
+  color: white;
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+}
+
+.sort-select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: white;
+  font-size: 0.9rem;
+  min-width: 200px;
+}
+
+/* Products Container */
+.products-container {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.products-container.grid {
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+.products-container.list {
+  grid-template-columns: 1fr;
+}
+
+.products-container.list :deep(.product-card) {
+  display: grid;
+  grid-template-columns: 200px 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+}
+
+.products-container.list :deep(.product-card .product-image) {
+  width: 200px;
+  height: 150px;
+}
+
+.products-container.list :deep(.product-card .product-info) {
+  text-align: left;
+}
+
+/* Loading, Error, and Empty States */
 .loading-container {
   text-align: center;
-  padding: 3rem 0;
+  padding: 4rem 2rem;
 }
 
 .spinner {
@@ -396,7 +598,7 @@ onMounted(async () => {
   border-top: 4px solid var(--primary-color);
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin: 0 auto;
+  margin: 0 auto 1rem;
 }
 
 @keyframes spin {
@@ -404,11 +606,16 @@ onMounted(async () => {
   100% { transform: rotate(360deg); }
 }
 
+.error-container,
+.no-results {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
 .alert {
   padding: 1rem;
   border-radius: var(--border-radius);
   margin: 2rem 0;
-  text-align: center;
 }
 
 .alert-error {
@@ -417,12 +624,73 @@ onMounted(async () => {
   border: 1px solid #fecaca;
 }
 
-/* Custom styles only for specific positioning */
-
-/* Mobile responsive - using utility classes where possible */
+/* Mobile Responsive */
 @media (max-width: 768px) {
-  .hero-content h1 {
-    font-size: 2rem;
+  .quick-filters-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .quick-controls {
+    justify-content: space-between;
+  }
+  
+  .filter-select {
+    min-width: auto;
+    flex: 1;
+  }
+  
+  .products-layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .results-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .products-container.grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  
+  .products-container.list :deep(.product-card) {
+    grid-template-columns: 150px 1fr;
+    gap: 1rem;
+  }
+  
+  .products-container.list :deep(.product-card .product-image) {
+    width: 150px;
+    height: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .products-container.grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .products-container.list {
+    grid-template-columns: 1fr;
+  }
+  
+  .products-container.list :deep(.product-card) {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  
+  .quick-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .controls-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
   }
 }
 </style>
