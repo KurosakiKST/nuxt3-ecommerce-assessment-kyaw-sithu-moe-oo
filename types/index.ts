@@ -81,6 +81,10 @@ export interface Category {
   url: string
 }
 
+export interface CategoryResponse {
+  categories: Category[]
+}
+
 // Order types
 export interface Order {
   id: string

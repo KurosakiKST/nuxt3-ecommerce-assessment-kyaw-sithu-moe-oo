@@ -70,8 +70,8 @@
         <div v-else class="categories-grid">
           <NuxtLink
             v-for="category in categories"
-            :key="category"
-            :to="`/products?category=${category}`"
+            :key="typeof category === 'string' ? category : category.slug"
+            :to="`/products?category=${typeof category === 'string' ? category : category.slug}`"
             class="category-card"
           >
             <div class="category-icon">📦</div>
@@ -84,12 +84,12 @@
 </template>
 
 <script setup lang="ts">
-import type { Product } from '~/types'
+import type { Category, Product } from '~/types'
 
 const { getFeaturedProducts, getCategories } = useProducts()
 
 const featuredProducts = ref<Product[]>([])
-const categories = ref<string[]>([])
+const categories = ref<Category[]>([])
 const loading = ref(true)
 const categoriesLoading = ref(true)
 const error = ref<string | null>(null)
@@ -105,7 +105,12 @@ onMounted(async () => {
   }
 
   try {
-    categories.value = await getCategories()
+    const categoryResponses = await getCategories()
+    categories.value = categoryResponses.map((cat: any) => ({
+      slug: cat.slug,
+      name: cat.name,
+      url: cat.url
+    }))
   } catch (err) {
     console.error('Failed to load categories:', err)
   } finally {
@@ -113,10 +118,12 @@ onMounted(async () => {
   }
 })
 
-const formatCategoryName = (category: string) => {
-  return category
+const formatCategoryName = (category: any) => {
+  const categoryName = typeof category === 'string' ? category : (category?.slug || category?.name || 'unknown')
+  
+  return categoryName
     .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 }
 </script>
