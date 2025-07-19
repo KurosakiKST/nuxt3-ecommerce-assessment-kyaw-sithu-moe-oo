@@ -18,7 +18,7 @@
           <!-- Step 3: Order Review -->
           <OrderReviewSummary v-else-if="step === 3" :shipping-info="shippingForm" :payment-info="paymentInfo"
             :order-items="cartItems" :total-amount="finalTotal" @edit-shipping="step = 1" @edit-payment="step = 2"
-            @previous-step="step = 2" @place-order="placeOrder" />
+            @previous-step="step = 2" @order-placed="handleOrderPlaced" />
         </div>
 
         <div class="order-summary">
@@ -116,14 +116,18 @@ const handlePaymentSubmit = (paymentData) => {
   nextStep()
 }
 
-const placeOrder = async () => {
+// Handle successful order placement
+const handleOrderPlaced = async (orderData) => {
   try {
-    console.log('Order placed successfully!')
-    cartStore.clearCart()
-    alert('Order placed successfully! (Demo mode)')
+    console.log('Order placed successfully!', orderData)
+
+    // Redirect to success page
+    await navigateTo('/order-success')
+
   } catch (error) {
-    console.error('Error placing order:', error)
-    alert('Error placing order. Please try again.')
+    console.error('Error redirecting to success page:', error)
+    // Fallback alert
+    alert('Order placed successfully! (Demo mode)')
   }
 }
 </script>

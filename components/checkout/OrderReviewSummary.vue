@@ -65,7 +65,7 @@
                 Back to Payment
             </button>
             <button @click="handlePlaceOrder" class="btn btn-primary" :disabled="!termsAccepted || isProcessing">
-                {{ isProcessing ? 'Processing...' : `Place Order - ${totalAmount.toFixed(2)}` }}
+                {{ isProcessing ? 'Processing...' : `Place Order - $${totalAmount.toFixed(2)}` }}
             </button>
         </div>
     </div>
@@ -73,6 +73,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useCartStore } from '@/stores/cart';
 
 interface Product {
     id: number;
@@ -113,12 +114,13 @@ interface Emits {
     (e: 'editShipping'): void;
     (e: 'editPayment'): void;
     (e: 'previousStep'): void;
-    (e: 'placeOrder'): void;
+    (e: 'orderPlaced', orderData: any): void;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
+const cartStore = useCartStore();
 const termsAccepted = ref(false);
 const isProcessing = ref(false);
 
@@ -130,10 +132,45 @@ const handlePlaceOrder = async () => {
     isProcessing.value = true;
 
     try {
+        // Simulate order processing
         await new Promise(resolve => setTimeout(resolve, 2000));
-        emit('placeOrder');
+
+        // Generate order ID
+        const orderId = 'ORD-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+
+        // Prepare order data
+        const orderData = {
+            orderId,
+            orderDate: new Date(),
+            total: props.totalAmount,
+            email: props.shippingInfo.firstName + '@example.com',
+            items: props.orderItems,
+            shipping: props.shippingInfo,
+            payment: props.paymentInfo
+        };
+
+        // Save order info to session storage for the success page
+        if (process.client) {
+            const orderInfo = {
+                orderId,
+                orderDate: new Date(),
+                total: props.totalAmount,
+                email: props.shippingInfo.firstName + '@example.com'
+            };
+
+            sessionStorage.setItem('lastOrderInfo', JSON.stringify(orderInfo));
+            sessionStorage.setItem('lastOrderItems', JSON.stringify(props.orderItems));
+        }
+
+        // Clear cart
+        cartStore.clearCart();
+
+        // Emit success event to parent
+        emit('orderPlaced', orderData);
+
     } catch (error) {
         console.error('Error placing order:', error);
+        alert('Error placing order. Please try again.');
     } finally {
         isProcessing.value = false;
     }
