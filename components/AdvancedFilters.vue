@@ -3,93 +3,54 @@
     <div class="filters-header">
       <h3>Advanced Filters</h3>
     </div>
-    
+
+    <!-- Category Filter -->
+    <div class="filter-section">
+      <h4>Category</h4>
+      <select v-model="localFilters.selectedCategory" @change="emitFiltersChange" class="filter-select">
+        <option value="">All Categories</option>
+        <option v-for="category in categories" :key="category.slug" :value="category.slug">
+          {{ category.name }}
+        </option>
+      </select>
+    </div>
+
     <!-- Price Range Filter -->
     <div class="filter-section">
       <h4>Price Range</h4>
       <div class="price-display">
         ${{ localFilters.minPrice }} - ${{ localFilters.maxPrice }}
       </div>
-      
+
       <div class="price-inputs">
-        <input
-          v-model.number="localFilters.minPrice"
-          type="number"
-          :min="priceRange.min"
-          :max="priceRange.max"
-          class="form-input price-input"
-          placeholder="Min"
-          @change="emitFiltersChange"
-        />
+        <input v-model.number="localFilters.minPrice" type="number" :min="priceRange.min" :max="priceRange.max"
+          class="form-input price-input" placeholder="Min" @change="emitFiltersChange" />
         <span>to</span>
-        <input
-          v-model.number="localFilters.maxPrice"
-          type="number"
-          :min="priceRange.min"
-          :max="priceRange.max"
-          class="form-input price-input"
-          placeholder="Max"
-          @change="emitFiltersChange"
-        />
+        <input v-model.number="localFilters.maxPrice" type="number" :min="priceRange.min" :max="priceRange.max"
+          class="form-input price-input" placeholder="Max" @change="emitFiltersChange" />
       </div>
     </div>
-    
-    <!-- Category Filter -->
-    <div class="filter-section">
-      <h4>Category</h4>
-      <select 
-        v-model="localFilters.selectedCategory" 
-        @change="emitFiltersChange"
-        class="filter-select"
-      >
-        <option value="">All Categories</option>
-        <option 
-          v-for="category in categories" 
-          :key="category.slug" 
-          :value="category.slug"
-        >
-          {{ category.name }}
-        </option>
-      </select>
-    </div>
-    
+
     <!-- Brand Filter -->
     <div class="filter-section">
       <h4>Brand</h4>
       <div class="brand-list">
-        <label 
-          v-for="brand in displayedBrands" 
-          :key="brand" 
-          class="brand-item"
-        >
-          <input
-            v-model="localFilters.selectedBrands"
-            type="checkbox"
-            :value="brand"
-            @change="emitFiltersChange"
-          />
+        <label v-for="brand in displayedBrands" :key="brand" class="brand-item">
+          <input v-model="localFilters.selectedBrands" type="checkbox" :value="brand" @change="emitFiltersChange" />
           {{ brand }}
         </label>
-        <button 
-          v-if="availableBrands.length > 6" 
-          @click="showAllBrands = !showAllBrands"
-          class="show-more-btn"
-        >
+        <button v-if="availableBrands.length > 6" @click="showAllBrands = !showAllBrands" class="show-more-btn">
           {{ showAllBrands ? 'Show Less' : `+${availableBrands.length - 6} More` }}
         </button>
       </div>
     </div>
-    
+
     <!-- Rating Filter -->
     <div class="filter-section">
       <h4>Rating</h4>
       <div class="rating-options">
-        <button
-          v-for="rating in [0, 1, 2, 3, 4, 5]"
-          :key="rating"
-          @click="setRating(rating)"
-          :class="['rating-option', { 'active': localFilters.minRating === rating }]"
-        >
+        <button v-for="rating in [0, 1, 2, 3, 4, 5]" :key="rating" @click="setRating(rating)"
+          :class="['rating-option', { 'active': localFilters.minRating === rating }]">
           <span v-if="rating === 0">All Ratings</span>
           <span v-else class="rating-stars">
             <span class="stars">{{ '★'.repeat(rating) }}{{ '☆'.repeat(5 - rating) }}</span>
@@ -138,8 +99,8 @@ watch(() => props.filters, (newFilters) => {
 
 // Computed
 const displayedBrands = computed(() => {
-  return showAllBrands.value 
-    ? props.availableBrands 
+  return showAllBrands.value
+    ? props.availableBrands
     : props.availableBrands.slice(0, 6)
 })
 
@@ -160,10 +121,6 @@ const setRating = (rating: number) => {
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 2rem;
-  max-height: calc(100vh - 4rem);
-  overflow-y: auto;
 }
 
 .filters-header {

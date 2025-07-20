@@ -6,15 +6,6 @@
         <div class="quick-filters-bar">
           <SearchFilter v-model="searchQuery" placeholder="Search products..." @search="handleSearch"
             @clear="handleClearSearch" />
-
-          <div class="quick-controls">
-            <select v-model="quickCategory" @change="handleQuickCategoryChange" class="filter-select">
-              <option value="">All Categories</option>
-              <option v-for="category in categories" :key="category.slug" :value="category.slug">
-                {{ category.name }}
-              </option>
-            </select>
-          </div>
         </div>
 
         <div class="products-layout">
@@ -155,6 +146,20 @@ const availableBrands = computed(() => {
   return Array.from(brands).sort()
 })
 
+// Scroll to products function
+const scrollToProducts = () => {
+  const productsElement = document.querySelector('.products-main')
+  if (productsElement) {
+    const offset = 100 // Add some offset from the top
+    const elementPosition = productsElement.getBoundingClientRect().top + window.pageYOffset
+
+    window.scrollTo({
+      top: elementPosition - offset,
+      behavior: 'smooth'
+    })
+  }
+}
+
 const priceRange = computed(() => {
   if (products.value.length === 0) return { min: 0, max: 2000 }
 
@@ -227,17 +232,13 @@ const handleSearch = (query: string) => {
   currentPage.value = 1
   fetchProducts()
   updateURL()
+  nextTick(() => {
+    scrollToProducts()
+  })
 }
 
 const handleClearSearch = () => {
   searchQuery.value = ''
-  fetchProducts()
-  updateURL()
-}
-
-const handleQuickCategoryChange = () => {
-  filters.selectedCategory = quickCategory.value
-  currentPage.value = 1
   fetchProducts()
   updateURL()
 }
@@ -248,6 +249,9 @@ const handleFiltersUpdate = (newFilters: FilterState) => {
   currentPage.value = 1
   fetchProducts()
   updateURL()
+  nextTick(() => {
+    scrollToProducts()
+  })
 }
 
 // Methods
@@ -301,22 +305,34 @@ const clearCategory = () => {
   quickCategory.value = ''
   fetchProducts()
   updateURL()
+  nextTick(() => {
+    scrollToProducts()
+  })
 }
 
 const clearPriceFilter = () => {
   filters.minPrice = priceRange.value.min
   filters.maxPrice = priceRange.value.max
   updateURL()
+  nextTick(() => {
+    scrollToProducts()
+  })
 }
 
 const clearRatingFilter = () => {
   filters.minRating = 0
   updateURL()
+  nextTick(() => {
+    scrollToProducts()
+  })
 }
 
 const clearSort = () => {
   sortBy.value = ''
   updateURL()
+  nextTick(() => {
+    scrollToProducts()
+  })
 }
 
 const removeBrand = (brand: string) => {
@@ -324,6 +340,9 @@ const removeBrand = (brand: string) => {
   if (index > -1) {
     filters.selectedBrands.splice(index, 1)
     updateURL()
+    nextTick(() => {
+      scrollToProducts()
+    })
   }
 }
 
@@ -339,6 +358,9 @@ const clearAllFilters = () => {
   currentPage.value = 1
   fetchProducts()
   updateURL()
+  nextTick(() => {
+    scrollToProducts()
+  })
 }
 
 // Pagination methods
@@ -346,8 +368,9 @@ const goToPage = (page: number) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page
     updateURL()
-    // Scroll to top of products
-    document.querySelector('.products-main')?.scrollIntoView({ behavior: 'smooth' })
+    nextTick(() => {
+      scrollToProducts()
+    })
   }
 }
 
@@ -396,7 +419,7 @@ onMounted(async () => {
 }
 
 .products-section {
-  padding: 1rem 0;
+  padding: 0.1rem 0;
 }
 
 /* Quick Filters Bar */
@@ -409,13 +432,6 @@ onMounted(async () => {
   border-radius: 12px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
-  flex-wrap: wrap;
-}
-
-.quick-controls {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
   flex-wrap: wrap;
 }
 
@@ -578,10 +594,6 @@ onMounted(async () => {
     gap: 1rem;
   }
 
-  .quick-controls {
-    justify-content: space-between;
-  }
-
   .filter-select {
     min-width: auto;
     flex: 1;
@@ -607,11 +619,6 @@ onMounted(async () => {
 @media (max-width: 480px) {
   .products-container.grid {
     grid-template-columns: 1fr 1fr;
-  }
-
-  .quick-controls {
-    flex-direction: column;
-    align-items: stretch;
   }
 
   .controls-group {
