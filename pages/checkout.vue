@@ -48,6 +48,10 @@
                 <span>${{ subtotal.toFixed(2) }}</span>
               </div>
               <div class="summary-row">
+                <span>Discount</span>
+                <span class="discount-amount">-${{ discount.toFixed(2) }}</span>
+              </div>
+              <div class="summary-row">
                 <span>Shipping</span>
                 <span>Free</span>
               </div>
@@ -92,7 +96,7 @@ definePageMeta({
 
 const cartStore = useCartStore()
 const authStore = useAuthStore()
-const { items: cartItems } = storeToRefs(cartStore)
+const { items: cartItems, discount } = storeToRefs(cartStore)
 const { user } = storeToRefs(authStore)
 
 const step = ref(1)
@@ -146,7 +150,7 @@ const subtotal = computed(() => {
 })
 
 const tax = computed(() => subtotal.value * 0.08)
-const finalTotal = computed(() => subtotal.value + tax.value)
+const finalTotal = computed(() => subtotal.value - discount.value + tax.value)
 
 const nextStep = () => {
   if (step.value < 3) {
