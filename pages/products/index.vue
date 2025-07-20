@@ -4,25 +4,13 @@
       <div class="container">
         <!-- Search with quick filter for category -->
         <div class="quick-filters-bar">
-          <SearchFilter
-            v-model="searchQuery"
-            placeholder="Search products..."
-            @search="handleSearch"
-            @clear="handleClearSearch"
-          />
-          
+          <SearchFilter v-model="searchQuery" placeholder="Search products..." @search="handleSearch"
+            @clear="handleClearSearch" />
+
           <div class="quick-controls">
-            <select
-              v-model="quickCategory" 
-              @change="handleQuickCategoryChange"
-              class="filter-select"
-            >
+            <select v-model="quickCategory" @change="handleQuickCategoryChange" class="filter-select">
               <option value="">All Categories</option>
-              <option 
-                v-for="category in categories" 
-                :key="category.slug" 
-                :value="category.slug"
-              >
+              <option v-for="category in categories" :key="category.slug" :value="category.slug">
                 {{ category.name }}
               </option>
             </select>
@@ -31,33 +19,17 @@
 
         <div class="products-layout">
           <!-- Advanced Filters Sidebar -->
-          <AdvancedFilters
-            :filters="filters"
-            :categories="categories"
-            :available-brands="availableBrands"
-            :price-range="priceRange"
-            @update:filters="handleFiltersUpdate"
-            @clear-all="clearAllFilters"
-          />
-          
+          <AdvancedFilters :filters="filters" :categories="categories" :available-brands="availableBrands"
+            :price-range="priceRange" @update:filters="handleFiltersUpdate" @clear-all="clearAllFilters" />
+
           <!-- Main Content -->
           <main class="products-main">
             <!-- Active Filters Display -->
-            <ActiveFilters
-              :search-query="searchQuery"
-              :filters="filters"
-              :sort-by="sortBy"
-              :categories="categories"
-              :price-range="priceRange"
-              @clear-search="handleClearSearch"
-              @clear-category="clearCategory"
-              @clear-price="clearPriceFilter"
-              @clear-rating="clearRatingFilter"
-              @clear-sort="clearSort"
-              @remove-brand="removeBrand"
-              @clear-all="clearAllFilters"
-            />
-            
+            <ActiveFilters :search-query="searchQuery" :filters="filters" :sort-by="sortBy" :categories="categories"
+              :price-range="priceRange" @clear-search="handleClearSearch" @clear-category="clearCategory"
+              @clear-price="clearPriceFilter" @clear-rating="clearRatingFilter" @clear-sort="clearSort"
+              @remove-brand="removeBrand" @clear-all="clearAllFilters" />
+
             <!-- Results Header -->
             <div class="results-header">
               <div class="results-info">
@@ -66,27 +38,21 @@
                   Showing {{ paginatedProducts.length }} of {{ filteredProducts.length }} products
                 </p>
               </div>
-              
+
               <!-- View and Sort Controls -->
               <div class="controls-group">
                 <!-- View Toggle -->
                 <div class="view-toggle">
-                  <button
-                    @click="viewMode = 'grid'"
-                    :class="['view-btn', { active: viewMode === 'grid' }]"
-                    title="Grid View"
-                  >
+                  <button @click="viewMode = 'grid'" :class="['view-btn', { active: viewMode === 'grid' }]"
+                    title="Grid View">
                     ⊞
                   </button>
-                  <button
-                    @click="viewMode = 'list'"
-                    :class="['view-btn', { active: viewMode === 'list' }]"
-                    title="List View"
-                  >
+                  <button @click="viewMode = 'list'" :class="['view-btn', { active: viewMode === 'list' }]"
+                    title="List View">
                     ☰
                   </button>
                 </div>
-                
+
                 <!-- Sort Options -->
                 <div class="sort-controls">
                   <select v-model="sortBy" @change="applySorting" class="sort-select">
@@ -99,13 +65,13 @@
                 </div>
               </div>
             </div>
-            
+
             <!-- Loading State -->
             <div v-if="loading" class="loading-container">
               <div class="spinner"></div>
               <p>Loading products...</p>
             </div>
-            
+
             <!-- Error State -->
             <div v-else-if="error" class="error-container">
               <div class="alert alert-error">
@@ -115,7 +81,7 @@
                 </button>
               </div>
             </div>
-            
+
             <!-- No Results -->
             <div v-else-if="filteredProducts.length === 0" class="no-results">
               <h3>No products found</h3>
@@ -124,25 +90,16 @@
                 Clear All Filters
               </button>
             </div>
-            
+
             <!-- Products Grid/List -->
             <div v-else :class="['products-container', viewMode]">
-              <ProductCard
-                v-for="product in paginatedProducts"
-                :key="product.id"
-                :product="product"
-                :class="{ 'list-view': viewMode === 'list' }"
-              />
+              <ProductCard v-for="product in paginatedProducts" :key="product.id" :product="product"
+                :is-list-view="viewMode === 'list'" />
             </div>
-            
+
             <!-- Pagination -->
-            <ProductsPagination
-              v-if="totalPages > 1"
-              :current-page="currentPage"
-              :total-pages="totalPages"
-              :total-products="filteredProducts.length"
-              @page-change="goToPage"
-            />
+            <ProductsPagination v-if="totalPages > 1" :current-page="currentPage" :total-pages="totalPages"
+              :total-products="filteredProducts.length" @page-change="goToPage" />
           </main>
         </div>
       </div>
@@ -200,8 +157,8 @@ const availableBrands = computed(() => {
 
 const priceRange = computed(() => {
   if (products.value.length === 0) return { min: 0, max: 2000 }
-  
-  const prices = products.value.map(product => 
+
+  const prices = products.value.map(product =>
     product.price - (product.price * product.discountPercentage / 100)
   )
   return {
@@ -212,7 +169,7 @@ const priceRange = computed(() => {
 
 const filteredProducts = computed(() => {
   let filtered = [...products.value]
-  
+
   // Price filter
   if (filters.minPrice > priceRange.value.min || filters.maxPrice < priceRange.value.max) {
     filtered = filtered.filter(product => {
@@ -220,27 +177,27 @@ const filteredProducts = computed(() => {
       return price >= filters.minPrice && price <= filters.maxPrice
     })
   }
-  
+
   // Brand filter
   if (filters.selectedBrands.length > 0) {
-    filtered = filtered.filter(product => 
+    filtered = filtered.filter(product =>
       filters.selectedBrands.includes(product.brand)
     )
   }
-  
+
   // Rating filter
   if (filters.minRating > 0) {
     filtered = filtered.filter(product => product.rating >= filters.minRating)
   }
-  
+
   return filtered
 })
 
 const sortedProducts = computed(() => {
   if (!sortBy.value) return filteredProducts.value
-  
+
   const sorted = [...filteredProducts.value]
-  
+
   switch (sortBy.value) {
     case 'price-low':
       return sorted.sort((a, b) => a.price - b.price)
@@ -298,9 +255,9 @@ const fetchProducts = async () => {
   try {
     loading.value = true
     error.value = null
-    
+
     let response
-    
+
     // Get 100 Products max only
     if (searchQuery.value.trim() && filters.selectedCategory) {
       response = await getProductsByCategory(filters.selectedCategory, { limit: 100 })
@@ -316,9 +273,9 @@ const fetchProducts = async () => {
     } else {
       response = await getAllProducts({ limit: 100 })
     }
-    
+
     products.value = response.products
-    
+
   } catch (err: any) {
     error.value = err.message || 'Failed to load products'
   } finally {
@@ -397,7 +354,7 @@ const goToPage = (page: number) => {
 // URL management
 const updateURL = () => {
   const query: Record<string, string> = {}
-  
+
   if (searchQuery.value.trim()) query.q = searchQuery.value
   if (filters.selectedCategory) query.category = filters.selectedCategory
   if (filters.minPrice > priceRange.value.min) query.minPrice = filters.minPrice.toString()
@@ -406,13 +363,13 @@ const updateURL = () => {
   if (filters.minRating > 0) query.rating = filters.minRating.toString()
   if (sortBy.value) query.sort = sortBy.value
   if (currentPage.value > 1) query.page = currentPage.value.toString()
-  
+
   router.push({ query })
 }
 
 const parseURLParams = () => {
   const query = route.query
-  
+
   if (query.q) searchQuery.value = query.q as string
   if (query.category) {
     filters.selectedCategory = query.category as string
@@ -566,23 +523,7 @@ onMounted(async () => {
 
 .products-container.list {
   grid-template-columns: 1fr;
-}
-
-.products-container.list :deep(.product-card) {
-  display: grid;
-  grid-template-columns: 200px 1fr auto;
   gap: 1rem;
-  align-items: center;
-  padding: 1rem;
-}
-
-.products-container.list :deep(.product-card .product-image) {
-  width: 200px;
-  height: 150px;
-}
-
-.products-container.list :deep(.product-card .product-info) {
-  text-align: left;
 }
 
 /* Loading, Error, and Empty States */
@@ -602,8 +543,13 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .error-container,
@@ -631,40 +577,30 @@ onMounted(async () => {
     align-items: stretch;
     gap: 1rem;
   }
-  
+
   .quick-controls {
     justify-content: space-between;
   }
-  
+
   .filter-select {
     min-width: auto;
     flex: 1;
   }
-  
+
   .products-layout {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .results-header {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
   }
-  
+
   .products-container.grid {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1rem;
-  }
-  
-  .products-container.list :deep(.product-card) {
-    grid-template-columns: 150px 1fr;
-    gap: 1rem;
-  }
-  
-  .products-container.list :deep(.product-card .product-image) {
-    width: 150px;
-    height: 120px;
   }
 }
 
@@ -672,21 +608,12 @@ onMounted(async () => {
   .products-container.grid {
     grid-template-columns: 1fr 1fr;
   }
-  
-  .products-container.list {
-    grid-template-columns: 1fr;
-  }
-  
-  .products-container.list :deep(.product-card) {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-  
+
   .quick-controls {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .controls-group {
     flex-direction: column;
     align-items: stretch;
