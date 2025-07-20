@@ -81,6 +81,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const cartStore = useCartStore()
+const toastStore = useToastStore()
 
 const discountedPrice = computed(() => {
   const discount = (props.product.price * props.product.discountPercentage) / 100
@@ -97,6 +98,7 @@ const getStars = (rating: number) => {
 
 const addToCart = () => {
   cartStore.addToCart(props.product)
+  toastStore.success(`${props.product.title} added to cart!`, 3000)
 }
 </script>
 
