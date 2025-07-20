@@ -5,16 +5,28 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null as User | null,
     token: null as string | null,
-    isAuthenticated: false
+    isAuthenticated: false,
+    isLoading: false
   }),
 
   getters: {
     currentUser: (state) => state.user,
-    authToken: (state) => state.token
+    authToken: (state) => state.token,
+    userFullName: (state) => {
+      if (!state.user) return ''
+      return `${state.user.firstName} ${state.user.lastName}`.trim()
+    },
+    userInitials: (state) => {
+      if (!state.user) return ''
+      const firstName = state.user.firstName || ''
+      const lastName = state.user.lastName || ''
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+    }
   },
 
   actions: {
     async login(credentials: LoginCredentials) {
+      this.isLoading = true
       try {
         const config = useRuntimeConfig()
         
@@ -34,11 +46,12 @@ export const useAuthStore = defineStore('auth', {
           maxAge: 60 * 60 * 24 * 7 // 7 days
         })
         authCookie.value = response.token
-
-        await navigateTo('/dashboard')
+        
         return response
       } catch (error) {
         throw error
+      } finally {
+        this.isLoading = false
       }
     },
 
@@ -48,14 +61,20 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
-      this.user = null
-      this.token = null
-      this.isAuthenticated = false
-      
-      const authCookie = useCookie('auth-token')
-      authCookie.value = null
-      
-      await navigateTo('/login')
+      this.isLoading = true
+      try {
+        this.user = null
+        this.token = null
+        this.isAuthenticated = false
+        
+        const authCookie = useCookie('auth-token')
+        authCookie.value = null
+        
+        // Navigation handled here since logout always goes to login
+        await navigateTo('/login')
+      } finally {
+        this.isLoading = false
+      }
     },
 
     async fetchCurrentUser() {
@@ -73,7 +92,11 @@ export const useAuthStore = defineStore('auth', {
         this.setUser(response)
         return response
       } catch (error) {
-        this.logout()
+        console.error('Failed to fetch current user:', error)
+        // Clear auth state but don't auto-logout to avoid redirect loops
+        this.user = null
+        this.token = null
+        this.isAuthenticated = false
         return null
       }
     },
