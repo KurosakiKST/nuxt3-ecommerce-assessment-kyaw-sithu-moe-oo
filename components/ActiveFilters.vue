@@ -6,59 +6,40 @@
         Clear All
       </button>
     </div>
-    
+
     <div class="active-filter-chips">
       <!-- Search Filter Chip -->
-      <span 
-        v-if="searchQuery" 
-        class="filter-chip"
-      >
+      <span v-if="searchQuery" class="filter-chip">
         Search: "{{ searchQuery }}"
         <button @click="$emit('clear-search')" class="remove-chip">✕</button>
       </span>
-      
+
       <!-- Category Filter Chip -->
-      <span 
-        v-if="filters.selectedCategory" 
-        class="filter-chip"
-      >
+      <span v-if="filters.selectedCategory" class="filter-chip">
         {{ getCategoryDisplayName(filters.selectedCategory) }}
         <button @click="$emit('clear-category')" class="remove-chip">✕</button>
       </span>
-      
+
       <!-- Price Range Filter Chip -->
-      <span 
-        v-if="hasPriceFilter" 
-        class="filter-chip"
-      >
+      <span v-if="hasPriceFilter" class="filter-chip">
         ${{ filters.minPrice }}-${{ filters.maxPrice }}
         <button @click="$emit('clear-price')" class="remove-chip">✕</button>
       </span>
-      
+
       <!-- Brand Filter Chips -->
-      <span 
-        v-for="brand in filters.selectedBrands"
-        :key="brand"
-        class="filter-chip"
-      >
+      <span v-for="brand in filters.selectedBrands" :key="brand" class="filter-chip">
         {{ brand }}
         <button @click="$emit('remove-brand', brand)" class="remove-chip">✕</button>
       </span>
-      
+
       <!-- Rating Filter Chip -->
-      <span 
-        v-if="filters.minRating > 0" 
-        class="filter-chip"
-      >
+      <span v-if="filters.minRating > 0" class="filter-chip">
         {{ filters.minRating }}+ Stars
         <button @click="$emit('clear-rating')" class="remove-chip">✕</button>
       </span>
-      
+
       <!-- Sort Filter Chip -->
-      <span 
-        v-if="sortBy" 
-        class="filter-chip"
-      >
+      <span v-if="sortBy" class="filter-chip">
         Sort: {{ getSortDisplayName(sortBy) }}
         <button @click="$emit('clear-sort')" class="remove-chip">✕</button>
       </span>
@@ -67,15 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Category } from '~/types'
-
-interface FilterState {
-  selectedCategory: string
-  minPrice: number
-  maxPrice: number
-  selectedBrands: string[]
-  minRating: number
-}
+import type { Category, FilterState } from '~/types'
 
 interface Props {
   searchQuery: string
@@ -101,16 +74,16 @@ defineEmits<Emits>()
 // Computed
 const hasActiveFilters = computed(() => {
   return props.searchQuery ||
-         props.filters.selectedCategory ||
-         hasPriceFilter.value ||
-         props.filters.selectedBrands.length > 0 ||
-         props.filters.minRating > 0 ||
-         props.sortBy
+    props.filters.selectedCategory ||
+    hasPriceFilter.value ||
+    props.filters.selectedBrands.length > 0 ||
+    props.filters.minRating > 0 ||
+    props.sortBy
 })
 
 const hasPriceFilter = computed(() => {
   return props.filters.minPrice > props.priceRange.min ||
-         props.filters.maxPrice < props.priceRange.max
+    props.filters.maxPrice < props.priceRange.max
 })
 
 // Utility methods
@@ -208,11 +181,11 @@ const getSortDisplayName = (sortValue: string) => {
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .active-filter-chips {
     gap: 0.25rem;
   }
-  
+
   .filter-chip {
     font-size: 0.8rem;
     padding: 0.2rem 0.6rem;

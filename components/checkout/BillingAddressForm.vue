@@ -47,15 +47,7 @@
 
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue';
-
-interface BillingAddress {
-    firstName: string;
-    lastName: string;
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-}
+import type { BillingAddress } from '~/types';
 
 interface Props {
     modelValue: BillingAddress;

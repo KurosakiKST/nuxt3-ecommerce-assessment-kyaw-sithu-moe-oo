@@ -100,6 +100,15 @@ export interface Address {
   country: string
 }
 
+export interface BillingAddress {
+    firstName: string;
+    lastName: string;
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+}
+
 // API Error type
 export interface ApiError {
   message: string
@@ -118,7 +127,16 @@ export interface SearchParams extends PaginationParams {
   q: string
 }
 
+
 // Filter params
+export interface FilterState {
+  selectedCategory: string
+  minPrice: number
+  maxPrice: number
+  selectedBrands: string[]
+  minRating: number
+}
+
 export interface FilterParams extends PaginationParams {
   category?: string
   minPrice?: number

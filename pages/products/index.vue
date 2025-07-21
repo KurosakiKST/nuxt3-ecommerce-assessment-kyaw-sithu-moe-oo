@@ -99,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Product, Category } from '~/types'
+import type { Product, Category, FilterState } from '~/types'
 
 import SearchFilter from '~/components/SearchFilter.vue'
 import AdvancedFilters from '~/components/AdvancedFilters.vue'
@@ -108,14 +108,6 @@ import ActiveFilters from '~/components/ActiveFilters.vue'
 const { getAllProducts, searchProducts, getCategories, getProductsByCategory } = useProducts()
 const route = useRoute()
 const router = useRouter()
-
-interface FilterState {
-  selectedCategory: string
-  minPrice: number
-  maxPrice: number
-  selectedBrands: string[]
-  minRating: number
-}
 
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])

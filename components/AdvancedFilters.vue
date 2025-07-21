@@ -63,15 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Category } from '~/types'
-
-interface FilterState {
-  selectedCategory: string
-  minPrice: number
-  maxPrice: number
-  selectedBrands: string[]
-  minRating: number
-}
+import type { Category, FilterState } from '~/types'
 
 interface Props {
   filters: FilterState
