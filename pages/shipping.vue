@@ -1,0 +1,1 @@
+<template><div>Shipping Page</div></template>

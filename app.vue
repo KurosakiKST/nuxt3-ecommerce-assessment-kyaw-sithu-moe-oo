@@ -9,12 +9,20 @@
 const authStore = useAuthStore()
 
 onMounted(async () => {
-  await authStore.initAuth()
+  try {
+    await authStore.initAuth()
+  } catch (e) {
+    console.error('Auth init failed', e)
+  }
 })
 
 // Initialize cart from localStorage
 const cartStore = useCartStore()
 onMounted(() => {
-  cartStore.loadFromLocalStorage()
+  try {
+    cartStore.loadFromLocalStorage()
+  } catch (e) {
+    console.error('Cart load failed', e)
+  }
 })
 </script>

@@ -1,4 +1,4 @@
-import type { Product, ProductsResponse, FilterParams } from '~/types'
+import type { Product, ProductsResponse, FilterParams, Category } from '~/types'
 
 export const useProducts = () => {
   const api = useApi()
@@ -20,7 +20,7 @@ export const useProducts = () => {
   }
 
   const getCategories = async () => {
-    return await api.get<string[]>('/products/categories')
+    return await api.get<Category[]>('/products/categories')
   }
 
   const getFeaturedProducts = async (limit: number = 8) => {

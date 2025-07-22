@@ -1,24 +1,27 @@
 <template>
   <div class="app-layout">
+    <!-- Header -->
     <header class="app-header">
+
+      <!-- Nav -->
       <nav class="navbar">
         <div class="container">
           <div class="nav-content">
             <NuxtLink to="/" class="logo">
               <h1>E-Store</h1>
             </NuxtLink>
-            
+
             <div class="nav-menu" :class="{ 'active': mobileMenuOpen }">
               <NuxtLink to="/" class="nav-link" @click="closeMobileMenu">Home</NuxtLink>
               <NuxtLink to="/products" class="nav-link" @click="closeMobileMenu">Products</NuxtLink>
               <NuxtLink to="/categories" class="nav-link" @click="closeMobileMenu">Categories</NuxtLink>
-              
+
               <div class="nav-actions">
                 <NuxtLink to="/cart" class="nav-icon-link" @click="closeMobileMenu">
                   <CartIcon />
                   <span v-if="cartItemCount > 0" class="cart-badge">{{ cartItemCount }}</span>
                 </NuxtLink>
-                
+
                 <div v-if="isAuthenticated" class="user-menu">
                   <button @click="toggleUserDropdown" class="user-button">
                     <img v-if="user?.image" :src="user.image" :alt="user.firstName" class="user-avatar">
@@ -34,7 +37,7 @@
                 <NuxtLink v-else to="/login" class="btn btn-primary" @click="closeMobileMenu">Login</NuxtLink>
               </div>
             </div>
-            
+
             <button class="mobile-menu-toggle" @click="toggleMobileMenu">
               <span></span>
               <span></span>
@@ -49,6 +52,7 @@
       <slot />
     </main>
 
+    <!-- Footer -->
     <footer class="app-footer">
       <div class="container">
         <div class="footer-content">
@@ -59,19 +63,35 @@
           <div class="footer-section">
             <h3>Quick Links</h3>
             <ul>
-              <li><NuxtLink to="/about">About Us</NuxtLink></li>
-              <li><NuxtLink to="/contact">Contact</NuxtLink></li>
-              <li><NuxtLink to="/terms">Terms & Conditions</NuxtLink></li>
-              <li><NuxtLink to="/privacy">Privacy Policy</NuxtLink></li>
+              <li>
+                <NuxtLink to="/about">About Us</NuxtLink>
+              </li>
+              <li>
+                <NuxtLink to="/contact">Contact</NuxtLink>
+              </li>
+              <li>
+                <NuxtLink to="/terms">Terms & Conditions</NuxtLink>
+              </li>
+              <li>
+                <NuxtLink to="/privacy">Privacy Policy</NuxtLink>
+              </li>
             </ul>
           </div>
           <div class="footer-section">
             <h3>Customer Service</h3>
             <ul>
-              <li><NuxtLink to="/help">Help Center</NuxtLink></li>
-              <li><NuxtLink to="/shipping">Shipping Info</NuxtLink></li>
-              <li><NuxtLink to="/returns">Returns</NuxtLink></li>
-              <li><NuxtLink to="/faq">FAQ</NuxtLink></li>
+              <li>
+                <NuxtLink to="/help">Help Center</NuxtLink>
+              </li>
+              <li>
+                <NuxtLink to="/shipping">Shipping Info</NuxtLink>
+              </li>
+              <li>
+                <NuxtLink to="/returns">Returns</NuxtLink>
+              </li>
+              <li>
+                <NuxtLink to="/faq">FAQ</NuxtLink>
+              </li>
             </ul>
           </div>
           <div class="footer-section">
@@ -84,6 +104,9 @@
         </div>
       </div>
     </footer>
+
+    <!-- Toast notifications -->
+    <ToastNotifications />
   </div>
 </template>
 
@@ -121,14 +144,14 @@ const logout = async () => {
 }
 
 // Icons as components
-const CartIcon = () => h('svg', { 
-  width: '24', 
-  height: '24', 
-  viewBox: '0 0 24 24', 
-  fill: 'none', 
-  stroke: 'currentColor' 
+const CartIcon = () => h('svg', {
+  width: '24',
+  height: '24',
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor'
 }, [
-  h('path', { 
+  h('path', {
     d: 'M9 2L6 6H3L5 20H19L21 6H18L15 2H9Z',
     'stroke-width': '2',
     'stroke-linecap': 'round',
@@ -144,7 +167,7 @@ const UserIcon = () => h('svg', {
   stroke: 'currentColor'
 }, [
   h('circle', { cx: '12', cy: '7', r: '4', 'stroke-width': '2' }),
-  h('path', { 
+  h('path', {
     d: 'M4 21V17C4 15.9 4.9 15 6 15H18C19.1 15 20 15.9 20 17V21',
     'stroke-width': '2',
     'stroke-linecap': 'round'
@@ -364,12 +387,11 @@ onMounted(() => {
   color: #94a3b8;
 }
 
-/* Mobile Menu Bug - Intentionally broken */
 @media (max-width: 768px) {
   .mobile-menu-toggle {
     display: flex;
   }
-  
+
   .nav-menu {
     position: fixed;
     top: 0;
@@ -381,17 +403,16 @@ onMounted(() => {
     padding: 2rem;
     transition: left 0.3s ease;
   }
-  
-  /* Bug: This should be .nav-menu.active but missing the active state toggle */
-  .nav-menu {
-    left: -100%;
+
+  .nav-menu.active {
+    left: 0;
   }
-  
+
   .nav-actions {
     flex-direction: column;
     width: 100%;
   }
-  
+
   .footer-content {
     grid-template-columns: repeat(2, 1fr);
   }
