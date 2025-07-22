@@ -3,255 +3,145 @@
         <h3>Card Information</h3>
 
         <div class="form-group">
-            <label for="cardNumber" class="form-label">Card Number</label>
+            <label for="cardNumber" class="form-label">Card Number *</label>
             <div class="card-input-wrapper">
-                <input id="cardNumber" v-model="localForm.cardNumber" type="text" class="form-input"
-                    :class="{ 'form-error-input': errors.cardNumber }" placeholder="1234 5678 9012 3456" maxlength="19"
-                    @input="formatCardNumber" @blur="validateCardNumber" required />
+                <input id="cardNumber" v-model="formState.data.cardNumber" type="text" class="form-input"
+                    :class="{ 'error': hasFieldError('cardNumber') }" placeholder="1234 5678 9012 3456" maxlength="19"
+                    @input="handleCardNumberInput" @blur="handleFieldBlur('cardNumber')" required />
                 <div class="card-type-icon">
-                    <span v-if="cardType">{{ getCardIcon(cardType) }}</span>
+                    <img v-if="cardType" :src="getCardIcon(cardType)" :alt="cardType" class="card-icon" />
                 </div>
             </div>
-            <div v-if="errors.cardNumber" class="form-error">{{ errors.cardNumber }}</div>
+            <div v-if="hasFieldError('cardNumber')" class="error-message">
+                {{ getFieldError('cardNumber') }}
+            </div>
         </div>
 
         <div class="form-row">
             <div class="form-group">
-                <label for="expiryDate" class="form-label">Expiry Date</label>
-                <input id="expiryDate" v-model="localForm.expiryDate" type="text" class="form-input"
-                    :class="{ 'form-error-input': errors.expiryDate }" placeholder="MM/YY" maxlength="5"
-                    @input="formatExpiryDate" @blur="validateExpiryDate" required />
-                <div v-if="errors.expiryDate" class="form-error">{{ errors.expiryDate }}</div>
+                <label for="expiryDate" class="form-label">Expiry Date *</label>
+                <input id="expiryDate" v-model="formState.data.expiryDate" type="text" class="form-input"
+                    :class="{ 'error': hasFieldError('expiryDate') }" placeholder="MM/YY" maxlength="5"
+                    @input="handleExpiryDateInput" @blur="handleFieldBlur('expiryDate')" required />
+                <div v-if="hasFieldError('expiryDate')" class="error-message">
+                    {{ getFieldError('expiryDate') }}
+                </div>
             </div>
 
             <div class="form-group">
-                <label for="cvv" class="form-label">CVV</label>
-                <input id="cvv" v-model="localForm.cvv" type="text" class="form-input"
-                    :class="{ 'form-error-input': errors.cvv }" placeholder="123" maxlength="4" @input="formatCVV"
-                    @blur="validateCVV" required />
-                <div v-if="errors.cvv" class="form-error">{{ errors.cvv }}</div>
+                <label for="cvv" class="form-label">CVV *</label>
+                <input id="cvv" v-model="formState.data.cvv" type="text" class="form-input"
+                    :class="{ 'error': hasFieldError('cvv') }" placeholder="123" maxlength="4" @input="handleCvvInput"
+                    @blur="handleFieldBlur('cvv')" required />
+                <div v-if="hasFieldError('cvv')" class="error-message">
+                    {{ getFieldError('cvv') }}
+                </div>
             </div>
         </div>
 
         <div class="form-group">
-            <label for="cardName" class="form-label">Name on Card</label>
-            <input id="cardName" v-model="localForm.cardName" type="text" class="form-input"
-                :class="{ 'form-error-input': errors.cardName }" placeholder="John Doe" @blur="validateCardName"
-                required />
-            <div v-if="errors.cardName" class="form-error">{{ errors.cardName }}</div>
+            <label for="cardName" class="form-label">Name on Card *</label>
+            <input id="cardName" v-model="formState.data.cardName" type="text" class="form-input"
+                :class="{ 'error': hasFieldError('cardName') }" placeholder="John Doe"
+                @blur="handleFieldBlur('cardName')" required />
+            <div v-if="hasFieldError('cardName')" class="error-message">
+                {{ getFieldError('cardName') }}
+            </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue';
+import { watch, computed, onMounted } from 'vue'
+import { useFormValidation, createCreditCardValidationRules } from '~/composables/useFormValidation'
+import { useFormFormatting } from '~/composables/useFormFormatting'
 
-interface CreditCardFormData {
-    cardNumber: string;
-    expiryDate: string;
-    cvv: string;
-    cardName: string;
+interface CreditCardData {
+    cardNumber: string
+    expiryDate: string
+    cvv: string
+    cardName: string
 }
 
 interface Props {
-    modelValue: CreditCardFormData;
+    modelValue: CreditCardData
 }
 
 interface Emits {
-    (e: 'update:modelValue', value: CreditCardFormData): void;
-    (e: 'validationChange', isValid: boolean): void;
+    (e: 'update:modelValue', value: CreditCardData): void
+    (e: 'validationChange', isValid: boolean): void
 }
 
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
 
-const localForm = reactive<CreditCardFormData>({ ...props.modelValue });
-const cardType = ref('');
-
-const errors = reactive({
+// Initialize form validation
+const initialData: CreditCardData = {
     cardNumber: '',
     expiryDate: '',
     cvv: '',
     cardName: ''
-});
+}
 
-const formatCardNumber = (event: Event) => {
-    const target = event.target as HTMLInputElement;
-    let value = target.value.replace(/\s/g, '').replace(/[^0-9]/gi, '');
-    const matches = value.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
+const {
+    formState,
+    isFormValid,
+    validateField,
+    setFormData,
+    hasFieldError,
+    getFieldError
+} = useFormValidation(initialData, createCreditCardValidationRules())
 
-    for (let i = 0, len = match.length; i < len; i += 4) {
-        parts.push(match.substring(i, i + 4));
-    }
+const {
+    formatCardNumber,
+    formatExpiryDate,
+    formatCVV,
+    getCardType,
+    getCardIcon
+} = useFormFormatting()
 
-    if (parts.length) {
-        localForm.cardNumber = parts.join(' ');
-        detectCardType(match);
-    } else {
-        localForm.cardNumber = value;
-    }
+// Computed properties
+const cardType = computed(() => getCardType(formState.data.cardNumber))
 
-    if (errors.cardNumber) {
-        errors.cardNumber = '';
-    }
-};
+// Event handlers
+const handleFieldBlur = (fieldName: string) => {
+    validateField(fieldName)
+}
 
-const detectCardType = (number: string) => {
-    const patterns = {
-        visa: /^4/,
-        mastercard: /^5[1-5]/,
-        amex: /^3[47]/,
-        discover: /^6(?:011|5)/
-    };
+const handleCardNumberInput = (event: Event) => {
+    const target = event.target as HTMLInputElement
+    formState.data.cardNumber = formatCardNumber(target.value)
+}
 
-    for (const [type, pattern] of Object.entries(patterns)) {
-        if (pattern.test(number)) {
-            cardType.value = type;
-            return;
-        }
-    }
-    cardType.value = '';
-};
+const handleExpiryDateInput = (event: Event) => {
+    const target = event.target as HTMLInputElement
+    formState.data.expiryDate = formatExpiryDate(target.value)
+}
 
-const getCardIcon = (type: string) => {
-    const icons: Record<string, string> = {
-        visa: '💳',
-        mastercard: '💳',
-        amex: '💳',
-        discover: '💳'
-    };
-    return icons[type] ?? '💳';
-};
+const handleCvvInput = (event: Event) => {
+    const target = event.target as HTMLInputElement
+    formState.data.cvv = formatCVV(target.value)
+}
 
-const formatExpiryDate = (event: Event) => {
-    const target = event.target as HTMLInputElement;
-    let value = target.value.replace(/\D/g, '');
-    if (value.length >= 2) {
-        value = value.substring(0, 2) + '/' + value.substring(2, 4);
-    }
-    localForm.expiryDate = value;
+// Initialize form with existing data
+onMounted(() => {
+    setFormData(props.modelValue)
+})
 
-    if (errors.expiryDate) {
-        errors.expiryDate = '';
-    }
-};
+// Watch for external changes
+watch(() => props.modelValue, (newValue) => {
+    setFormData(newValue)
+}, { deep: true })
 
-const formatCVV = (event: Event) => {
-    const target = event.target as HTMLInputElement;
-    localForm.cvv = target.value.replace(/\D/g, '');
-    if (errors.cvv) {
-        errors.cvv = '';
-    }
-};
+// Emit changes to parent
+watch(() => formState.data, (newData) => {
+    emit('update:modelValue', { ...newData } as CreditCardData)
+}, { deep: true })
 
-const validateCardNumber = () => {
-    const cleanNumber = localForm.cardNumber.replace(/\s/g, '');
-
-    if (!cleanNumber) {
-        errors.cardNumber = 'Card number is required';
-        return false;
-    }
-
-    if (cleanNumber.length < 13 || cleanNumber.length > 19) {
-        errors.cardNumber = 'Please enter a valid card number';
-        return false;
-    }
-
-    if (!luhnCheck(cleanNumber)) {
-        errors.cardNumber = 'Please enter a valid card number';
-        return false;
-    }
-
-    errors.cardNumber = '';
-    return true;
-};
-
-const validateExpiryDate = () => {
-    if (!localForm.expiryDate) {
-        errors.expiryDate = 'Expiry date is required';
-        return false;
-    }
-
-    const [month, year] = localForm.expiryDate.split('/');
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear() % 100;
-    const currentMonth = currentDate.getMonth() + 1;
-
-    if (!month || !year || month < '01' || month > '12') {
-        errors.expiryDate = 'Please enter a valid expiry date (MM/YY)';
-        return false;
-    }
-
-    if (parseInt(year) < currentYear || (parseInt(year) === currentYear && parseInt(month) < currentMonth)) {
-        errors.expiryDate = 'Card has expired';
-        return false;
-    }
-
-    errors.expiryDate = '';
-    return true;
-};
-
-const validateCVV = () => {
-    if (!localForm.cvv) {
-        errors.cvv = 'CVV is required';
-        return false;
-    }
-
-    if (localForm.cvv.length < 3 || localForm.cvv.length > 4) {
-        errors.cvv = 'Please enter a valid CVV';
-        return false;
-    }
-
-    errors.cvv = '';
-    return true;
-};
-
-const validateCardName = () => {
-    if (!localForm.cardName.trim()) {
-        errors.cardName = 'Name on card is required';
-        return false;
-    }
-
-    errors.cardName = '';
-    return true;
-};
-
-const luhnCheck = (num: string) => {
-    let arr = (num + '')
-        .split('')
-        .reverse()
-        .map(x => parseInt(x));
-    let lastDigit = arr.splice(0, 1)[0];
-    let sum = arr.reduce((acc, val, i) => (i % 2 !== 0 ? acc + val : acc + ((val * 2) % 9) || 9), 0);
-    sum += lastDigit;
-    return sum % 10 === 0;
-};
-
-const checkFormValidity = () => {
-    const isValid = localForm.cardNumber &&
-        localForm.expiryDate &&
-        localForm.cvv &&
-        localForm.cardName &&
-        !errors.cardNumber &&
-        !errors.expiryDate &&
-        !errors.cvv &&
-        !errors.cardName;
-
-    emit('validationChange', Boolean(isValid));
-    return Boolean(isValid);
-};
-
-// Watchers
-watch(localForm, (newValue) => {
-    emit('update:modelValue', { ...newValue });
-    checkFormValidity();
-}, { deep: true });
-
-watch(errors, () => {
-    checkFormValidity();
-}, { deep: true });
+// Emit validation changes
+watch(isFormValid, (valid) => {
+    emit('validationChange', valid)
+})
 </script>
 
 <style scoped>
@@ -273,11 +163,49 @@ watch(errors, () => {
     right: 0.75rem;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 1.25rem;
+    pointer-events: none;
 }
 
-.form-error-input {
-    border-color: var(--danger-color) !important;
+.card-icon {
+    width: 32px;
+    height: 20px;
+    object-fit: contain;
+}
+
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.form-input.error {
+    border-color: var(--danger-color);
+}
+
+.error-message {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--danger-color);
 }
 
 .form-row {

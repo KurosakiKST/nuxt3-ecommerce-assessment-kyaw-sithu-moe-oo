@@ -28,49 +28,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import PaymentMethodSelector from './PaymentMethodSelector.vue';
-import CreditCardForm from './CreditCardForm.vue';
-import BillingAddressForm from './BillingAddressForm.vue';
-import PaymentPlaceholder from './PaymentPlaceholder.vue';
+import { ref, computed, watch } from 'vue'
+import PaymentMethodSelector from './PaymentMethodSelector.vue'
+import CreditCardForm from './CreditCardForm.vue'
+import BillingAddressForm from './BillingAddressForm.vue'
+import PaymentPlaceholder from './PaymentPlaceholder.vue'
+import type { CreditCardData, BillingAddress } from '~/types'
 
-interface CreditCardData {
-  cardNumber: string;
-  expiryDate: string;
-  cvv: string;
-  cardName: string;
-}
-
-interface BillingAddress {
-  firstName: string;
-  lastName: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
+interface PaymentData {
+  paymentMethod: string
+  creditCardData?: CreditCardData
+  billingAddress?: BillingAddress
 }
 
 interface Props {
-  shippingAddress: BillingAddress;
+  shippingAddress: BillingAddress
 }
 
 interface Emits {
-  (e: 'submit', data: { paymentMethod: string; creditCardData?: CreditCardData; billingAddress?: BillingAddress }): void;
-  (e: 'previousStep'): void;
+  (e: 'submit', data: PaymentData): void
+  (e: 'previousStep'): void
 }
 
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
 
-const paymentMethod = ref('card');
-const isCardValid = ref(false);
+// Reactive state
+const paymentMethod = ref('card')
+const isCardValid = ref(false)
+const isSameAsShipping = ref(true)
 
 const creditCardData = ref<CreditCardData>({
   cardNumber: '',
   expiryDate: '',
   cvv: '',
   cardName: ''
-});
+})
 
 const billingAddress = ref<BillingAddress>({
   firstName: '',
@@ -79,40 +72,57 @@ const billingAddress = ref<BillingAddress>({
   city: '',
   state: '',
   zipCode: ''
-});
+})
 
+// Computed properties
 const isFormValid = computed(() => {
-  if (paymentMethod.value === 'card') {
-    return isCardValid.value;
+  switch (paymentMethod.value) {
+    case 'card':
+      return isCardValid.value
+    case 'paypal':
+    case 'apple-pay':
+      return true
+    default:
+      return false
   }
-  return true;
-});
+})
 
+// Event handlers
 const handleCardValidationChange = (valid: boolean) => {
-  isCardValid.value = valid;
-};
+  isCardValid.value = valid
+}
 
 const handleSameAsShippingChange = (sameAsShipping: boolean) => {
+  isSameAsShipping.value = sameAsShipping
   if (sameAsShipping) {
-    Object.assign(billingAddress.value, props.shippingAddress);
+    Object.assign(billingAddress.value, props.shippingAddress)
   }
-};
+}
 
 const resetPaymentErrors = () => {
-  isCardValid.value = false;
-};
+  // Reset validation states when payment method changes
+  isCardValid.value = false
+}
 
 const handleSubmit = () => {
-  const paymentData = {
-    paymentMethod: paymentMethod.value,
-    ...(paymentMethod.value === 'card' && {
-      creditCardData: creditCardData.value,
-      billingAddress: billingAddress.value
-    })
-  };
+  const paymentData: PaymentData = {
+    paymentMethod: paymentMethod.value
+  }
 
-  emit('submit', paymentData);
-};
+  if (paymentMethod.value === 'card') {
+    paymentData.creditCardData = { ...creditCardData.value }
+    paymentData.billingAddress = { ...billingAddress.value }
+  }
+
+  emit('submit', paymentData)
+}
+
+// Initialize billing address with shipping address
+watch(() => props.shippingAddress, (newShippingAddress) => {
+  if (isSameAsShipping.value) {
+    Object.assign(billingAddress.value, newShippingAddress)
+  }
+}, { immediate: true, deep: true })
 </script>
 
 <style scoped>
@@ -129,6 +139,41 @@ const handleSubmit = () => {
   margin-top: 2rem;
   padding-top: 2rem;
   border-top: 1px solid var(--border-color);
+}
+
+.btn {
+  padding: 0.875rem 2rem;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--text-color);
+  border: 2px solid var(--border-color);
+}
+
+.btn-outline:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {

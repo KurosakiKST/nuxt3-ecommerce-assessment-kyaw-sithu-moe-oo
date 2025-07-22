@@ -12,45 +12,58 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="firstName" class="form-label">First Name *</label>
-                    <input id="firstName" v-model="formData.firstName" type="text" class="form-input"
-                        :class="{ 'error': errors.firstName }" @blur="handleBlur('firstName')" required />
-                    <div v-if="errors.firstName" class="error-message">{{ errors.firstName }}</div>
+                    <input id="firstName" v-model="formState.data.firstName" type="text" class="form-input"
+                        :class="{ 'error': hasFieldError('firstName') }" @blur="handleFieldBlur('firstName')"
+                        required />
+                    <div v-if="hasFieldError('firstName')" class="error-message">
+                        {{ getFieldError('firstName') }}
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="lastName" class="form-label">Last Name *</label>
-                    <input id="lastName" v-model="formData.lastName" type="text" class="form-input"
-                        :class="{ 'error': errors.lastName }" @blur="handleBlur('lastName')" required />
-                    <div v-if="errors.lastName" class="error-message">{{ errors.lastName }}</div>
+                    <input id="lastName" v-model="formState.data.lastName" type="text" class="form-input"
+                        :class="{ 'error': hasFieldError('lastName') }" @blur="handleFieldBlur('lastName')" required />
+                    <div v-if="hasFieldError('lastName')" class="error-message">
+                        {{ getFieldError('lastName') }}
+                    </div>
                 </div>
             </div>
 
             <div class="form-group">
                 <label for="address" class="form-label">Street Address *</label>
-                <input id="address" v-model="formData.address" type="text" class="form-input"
-                    :class="{ 'error': errors.address }" placeholder="123 Main Street" @blur="handleBlur('address')"
-                    required />
-                <div v-if="errors.address" class="error-message">{{ errors.address }}</div>
+                <input id="address" v-model="formState.data.address" type="text" class="form-input"
+                    :class="{ 'error': hasFieldError('address') }" placeholder="123 Main Street"
+                    @blur="handleFieldBlur('address')" required />
+                <div v-if="hasFieldError('address')" class="error-message">
+                    {{ getFieldError('address') }}
+                </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label for="city" class="form-label">City *</label>
-                    <input id="city" v-model="formData.city" type="text" class="form-input"
-                        :class="{ 'error': errors.city }" @blur="handleBlur('city')" required />
-                    <div v-if="errors.city" class="error-message">{{ errors.city }}</div>
+                    <input id="city" v-model="formState.data.city" type="text" class="form-input"
+                        :class="{ 'error': hasFieldError('city') }" @blur="handleFieldBlur('city')" required />
+                    <div v-if="hasFieldError('city')" class="error-message">
+                        {{ getFieldError('city') }}
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="state" class="form-label">State *</label>
-                    <input id="state" v-model="formData.state" type="text" class="form-input"
-                        :class="{ 'error': errors.state }" @blur="handleBlur('state')" required />
-                    <div v-if="errors.state" class="error-message">{{ errors.state }}</div>
+                    <input id="state" v-model="formState.data.state" type="text" class="form-input"
+                        :class="{ 'error': hasFieldError('state') }" @blur="handleFieldBlur('state')" required />
+                    <div v-if="hasFieldError('state')" class="error-message">
+                        {{ getFieldError('state') }}
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="zipCode" class="form-label">ZIP Code *</label>
-                    <input id="zipCode" v-model="formData.zipCode" type="text" class="form-input"
-                        :class="{ 'error': errors.zipCode }" placeholder="12345" @blur="handleBlur('zipCode')"
-                        required />
-                    <div v-if="errors.zipCode" class="error-message">{{ errors.zipCode }}</div>
+                    <input id="zipCode" v-model="formState.data.zipCode" type="text" class="form-input"
+                        :class="{ 'error': hasFieldError('zipCode') }" placeholder="12345"
+                        @blur="handleFieldBlur('zipCode')" @input="handleZipCodeInput" required />
+                    <div v-if="hasFieldError('zipCode')" class="error-message">
+                        {{ getFieldError('zipCode') }}
+                    </div>
                 </div>
             </div>
 
@@ -64,7 +77,9 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch, onMounted } from 'vue'
+import { watch, onMounted, h } from 'vue'
+import { useFormValidation, createAddressValidationRules } from '~/composables/useFormValidation'
+import { useFormFormatting } from '@/composables/useFormFormatting'
 import type { ShippingData } from '~/types'
 
 interface Props {
@@ -84,102 +99,70 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-const formData = reactive<ShippingData>({
+// Initialize form validation
+const initialData: ShippingData = {
     firstName: '',
     lastName: '',
     address: '',
     city: '',
     state: '',
     zipCode: ''
-})
-
-const errors = reactive({
-    firstName: '',
-    lastName: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: ''
-})
-
-const isFormValid = computed(() => {
-    return formData.firstName.trim() !== '' &&
-        formData.lastName.trim() !== '' &&
-        formData.address.trim() !== '' &&
-        formData.city.trim() !== '' &&
-        formData.state.trim() !== '' &&
-        formData.zipCode.trim() !== '' &&
-        isValidZipCode(formData.zipCode) &&
-        Object.values(errors).every(error => error === '')
-})
-
-const isValidZipCode = (zipCode: string): boolean => {
-    return /^\d{5}(-\d{4})?$/.test(zipCode)
 }
 
-const validateField = (field: keyof ShippingData) => {
-    switch (field) {
-        case 'firstName':
-        case 'lastName':
-        case 'city':
-        case 'state':
-            errors[field] = formData[field].trim() === '' ? 'This field is required' : ''
-            break
-        case 'address':
-            errors.address = formData.address.trim() === '' ? 'Street address is required' : ''
-            break
-        case 'zipCode':
-            if (formData.zipCode.trim() === '') {
-                errors.zipCode = 'ZIP code is required'
-            } else if (!isValidZipCode(formData.zipCode)) {
-                errors.zipCode = 'Please enter a valid ZIP code (12345 or 12345-6789)'
-            } else {
-                errors.zipCode = ''
-            }
-            break
+const {
+    formState,
+    isFormValid,
+    validateField,
+    validateAllFields,
+    setFormData,
+    hasFieldError,
+    getFieldError
+} = useFormValidation(initialData, createAddressValidationRules())
+
+const { formatZipCode } = useFormFormatting()
+
+// Event handlers
+const handleFieldBlur = (fieldName: string) => {
+    validateField(fieldName)
+}
+
+const handleZipCodeInput = (event: Event) => {
+    const target = event.target as HTMLInputElement
+    formState.data.zipCode = formatZipCode(target.value)
+}
+
+const handleSubmit = () => {
+    if (validateAllFields()) {
+        emit('submit')
     }
-}
-
-watch(isFormValid, (valid) => {
-    emit('validationChange', valid)
-})
-
-const handleBlur = (field: keyof ShippingData) => {
-    validateField(field)
 }
 
 // Initialize form with existing data and pre-filled data
 onMounted(() => {
-    Object.assign(formData, props.modelValue, props.preFilledData)
+    setFormData({ ...props.modelValue, ...props.preFilledData })
 })
 
 // Watch for external changes
 watch(() => props.modelValue, (newValue) => {
-    Object.assign(formData, newValue)
+    setFormData(newValue)
 }, { deep: true })
 
 // Watch for pre-filled data changes
 watch(() => props.preFilledData, (newData) => {
     if (newData) {
-        Object.assign(formData, newData)
+        setFormData(newData)
     }
 }, { deep: true, immediate: true })
 
 // Emit changes to parent
-watch(formData, (newData) => {
-    emit('update:modelValue', { ...newData })
+watch(() => formState.data, (newData) => {
+    emit('update:modelValue', { ...newData } as ShippingData)
 }, { deep: true })
 
-const handleSubmit = () => {
-    // Validate all fields
-    Object.keys(formData).forEach(field => {
-        validateField(field as keyof ShippingData)
-    })
-
-    if (isFormValid.value) {
-        emit('submit')
-    }
-}
+// Emit validation changes
+watch(isFormValid, (valid) => {
+    emit('validationChange', valid)
+})
 
 // Icon component
 const CheckIcon = () => h('svg', {

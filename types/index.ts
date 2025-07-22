@@ -108,6 +108,14 @@ export interface BillingAddress {
     state: string;
     zipCode: string;
 }
+
+export interface CreditCardData {
+  cardNumber: string
+  expiryDate: string
+  cvv: string
+  cardName: string
+}
+
 export interface ShippingData {
     firstName: string
     lastName: string
