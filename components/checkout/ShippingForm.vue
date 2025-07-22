@@ -12,38 +12,50 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="firstName" class="form-label">First Name *</label>
-                    <input id="firstName" v-model="formData.firstName" type="text" class="form-input" required />
+                    <input id="firstName" v-model="formData.firstName" type="text" class="form-input"
+                        :class="{ 'error': errors.firstName }" @blur="handleBlur('firstName')" required />
+                    <div v-if="errors.firstName" class="error-message">{{ errors.firstName }}</div>
                 </div>
                 <div class="form-group">
                     <label for="lastName" class="form-label">Last Name *</label>
-                    <input id="lastName" v-model="formData.lastName" type="text" class="form-input" required />
+                    <input id="lastName" v-model="formData.lastName" type="text" class="form-input"
+                        :class="{ 'error': errors.lastName }" @blur="handleBlur('lastName')" required />
+                    <div v-if="errors.lastName" class="error-message">{{ errors.lastName }}</div>
                 </div>
             </div>
 
             <div class="form-group">
                 <label for="address" class="form-label">Street Address *</label>
                 <input id="address" v-model="formData.address" type="text" class="form-input"
-                    placeholder="123 Main Street" required />
+                    :class="{ 'error': errors.address }" placeholder="123 Main Street" @blur="handleBlur('address')"
+                    required />
+                <div v-if="errors.address" class="error-message">{{ errors.address }}</div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label for="city" class="form-label">City *</label>
-                    <input id="city" v-model="formData.city" type="text" class="form-input" required />
+                    <input id="city" v-model="formData.city" type="text" class="form-input"
+                        :class="{ 'error': errors.city }" @blur="handleBlur('city')" required />
+                    <div v-if="errors.city" class="error-message">{{ errors.city }}</div>
                 </div>
                 <div class="form-group">
                     <label for="state" class="form-label">State *</label>
-                    <input id="state" v-model="formData.state" type="text" class="form-input" required />
+                    <input id="state" v-model="formData.state" type="text" class="form-input"
+                        :class="{ 'error': errors.state }" @blur="handleBlur('state')" required />
+                    <div v-if="errors.state" class="error-message">{{ errors.state }}</div>
                 </div>
                 <div class="form-group">
                     <label for="zipCode" class="form-label">ZIP Code *</label>
-                    <input id="zipCode" v-model="formData.zipCode" type="text" class="form-input" placeholder="12345"
+                    <input id="zipCode" v-model="formData.zipCode" type="text" class="form-input"
+                        :class="{ 'error': errors.zipCode }" placeholder="12345" @blur="handleBlur('zipCode')"
                         required />
+                    <div v-if="errors.zipCode" class="error-message">{{ errors.zipCode }}</div>
                 </div>
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" :disabled="!isFormValid">
                     Continue to Payment
                 </button>
             </div>
@@ -53,15 +65,7 @@
 
 <script setup lang="ts">
 import { reactive, watch, onMounted } from 'vue'
-
-interface ShippingData {
-    firstName: string
-    lastName: string
-    address: string
-    city: string
-    state: string
-    zipCode: string
-}
+import type { ShippingData } from '~/types'
 
 interface Props {
     modelValue: ShippingData
@@ -71,6 +75,7 @@ interface Props {
 interface Emits {
     (e: 'update:modelValue', value: ShippingData): void
     (e: 'submit'): void
+    (e: 'validationChange', isValid: boolean): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -87,6 +92,61 @@ const formData = reactive<ShippingData>({
     state: '',
     zipCode: ''
 })
+
+const errors = reactive({
+    firstName: '',
+    lastName: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: ''
+})
+
+const isFormValid = computed(() => {
+    return formData.firstName.trim() !== '' &&
+        formData.lastName.trim() !== '' &&
+        formData.address.trim() !== '' &&
+        formData.city.trim() !== '' &&
+        formData.state.trim() !== '' &&
+        formData.zipCode.trim() !== '' &&
+        isValidZipCode(formData.zipCode) &&
+        Object.values(errors).every(error => error === '')
+})
+
+const isValidZipCode = (zipCode: string): boolean => {
+    return /^\d{5}(-\d{4})?$/.test(zipCode)
+}
+
+const validateField = (field: keyof ShippingData) => {
+    switch (field) {
+        case 'firstName':
+        case 'lastName':
+        case 'city':
+        case 'state':
+            errors[field] = formData[field].trim() === '' ? 'This field is required' : ''
+            break
+        case 'address':
+            errors.address = formData.address.trim() === '' ? 'Street address is required' : ''
+            break
+        case 'zipCode':
+            if (formData.zipCode.trim() === '') {
+                errors.zipCode = 'ZIP code is required'
+            } else if (!isValidZipCode(formData.zipCode)) {
+                errors.zipCode = 'Please enter a valid ZIP code (12345 or 12345-6789)'
+            } else {
+                errors.zipCode = ''
+            }
+            break
+    }
+}
+
+watch(isFormValid, (valid) => {
+    emit('validationChange', valid)
+})
+
+const handleBlur = (field: keyof ShippingData) => {
+    validateField(field)
+}
 
 // Initialize form with existing data and pre-filled data
 onMounted(() => {
@@ -111,7 +171,14 @@ watch(formData, (newData) => {
 }, { deep: true })
 
 const handleSubmit = () => {
-    emit('submit')
+    // Validate all fields
+    Object.keys(formData).forEach(field => {
+        validateField(field as keyof ShippingData)
+    })
+
+    if (isFormValid.value) {
+        emit('submit')
+    }
 }
 
 // Icon component
@@ -200,6 +267,16 @@ const CheckIcon = () => h('svg', {
     border-top: 1px solid var(--border-color);
 }
 
+.form-input.error {
+    border-color: var(--danger-color);
+}
+
+.error-message {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--danger-color);
+}
+
 .btn {
     padding: 0.875rem 2rem;
     border: none;
@@ -217,6 +294,11 @@ const CheckIcon = () => h('svg', {
 
 .btn-primary:hover:not(:disabled) {
     background-color: #1d4ed8;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 @media (max-width: 768px) {

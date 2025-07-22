@@ -108,6 +108,14 @@ export interface BillingAddress {
     state: string;
     zipCode: string;
 }
+export interface ShippingData {
+    firstName: string
+    lastName: string
+    address: string
+    city: string
+    state: string
+    zipCode: string
+}
 
 // API Error type
 export interface ApiError {
