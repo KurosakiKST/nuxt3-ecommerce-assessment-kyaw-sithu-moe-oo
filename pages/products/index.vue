@@ -4,22 +4,22 @@
       <div class="container">
         <!-- Search with quick filter for category -->
         <div class="quick-filters-bar">
-          <SearchFilter v-model="searchQuery" placeholder="Search products..." @search="handleSearch"
+          <SearchFilter v-model="state.searchQuery" placeholder="Search products..." @search="handleSearch"
             @clear="handleClearSearch" />
         </div>
 
         <div class="products-layout">
           <!-- Advanced Filters Sidebar -->
-          <AdvancedFilters :filters="filters" :categories="categories" :available-brands="availableBrands"
+          <AdvancedFilters :filters="state.filters" :categories="state.categories" :available-brands="availableBrands"
             :price-range="priceRange" @update:filters="handleFiltersUpdate" @clear-all="clearAllFilters" />
 
           <!-- Main Content -->
           <main class="products-main">
             <!-- Active Filters Display -->
-            <ActiveFilters :search-query="searchQuery" :filters="filters" :sort-by="sortBy" :categories="categories"
-              :price-range="priceRange" @clear-search="handleClearSearch" @clear-category="clearCategory"
-              @clear-price="clearPriceFilter" @clear-rating="clearRatingFilter" @clear-sort="clearSort"
-              @remove-brand="removeBrand" @clear-all="clearAllFilters" />
+            <ActiveFilters :search-query="state.searchQuery" :filters="state.filters" :sort-by="state.sortBy"
+              :categories="state.categories" :price-range="priceRange" @clear-search="handleClearSearch"
+              @clear-category="clearCategory" @clear-price="clearPriceFilter" @clear-rating="clearRatingFilter"
+              @clear-sort="clearSort" @remove-brand="removeBrand" @clear-all="clearAllFilters" />
 
             <!-- Results Header -->
             <div class="results-header">
@@ -34,11 +34,11 @@
               <div class="controls-group">
                 <!-- View Toggle -->
                 <div class="view-toggle">
-                  <button @click="viewMode = 'grid'" :class="['view-btn', { active: viewMode === 'grid' }]"
+                  <button @click="state.viewMode = 'grid'" :class="['view-btn', { active: state.viewMode === 'grid' }]"
                     title="Grid View">
                     ⊞
                   </button>
-                  <button @click="viewMode = 'list'" :class="['view-btn', { active: viewMode === 'list' }]"
+                  <button @click="state.viewMode = 'list'" :class="['view-btn', { active: state.viewMode === 'list' }]"
                     title="List View">
                     ☰
                   </button>
@@ -46,7 +46,7 @@
 
                 <!-- Sort Options -->
                 <div class="sort-controls">
-                  <select v-model="sortBy" @change="applySorting" class="sort-select">
+                  <select v-model="state.sortBy" @change="applySorting" class="sort-select">
                     <option value="">Sort by: Featured</option>
                     <option value="price-low">Sort by: Price Low-High</option>
                     <option value="price-high">Sort by: Price High-Low</option>
@@ -58,15 +58,15 @@
             </div>
 
             <!-- Loading State -->
-            <div v-if="loading" class="loading-container">
+            <div v-if="state.loading" class="loading-container">
               <div class="spinner"></div>
               <p>Loading products...</p>
             </div>
 
             <!-- Error State -->
-            <div v-else-if="error" class="error-container">
+            <div v-else-if="state.error" class="error-container">
               <div class="alert alert-error">
-                {{ error }}
+                {{ state.error }}
                 <button @click="fetchProducts" class="btn btn-primary mt-2">
                   Try Again
                 </button>
@@ -83,13 +83,13 @@
             </div>
 
             <!-- Products Grid/List -->
-            <div v-else :class="['products-container', viewMode]">
+            <div v-else :class="['products-container', state.viewMode]">
               <ProductCard v-for="product in paginatedProducts" :key="product.id" :product="product"
-                :is-list-view="viewMode === 'list'" />
+                :is-list-view="state.viewMode === 'list'" />
             </div>
 
             <!-- Pagination -->
-            <ProductsPagination v-if="totalPages > 1" :current-page="currentPage" :total-pages="totalPages"
+            <ProductsPagination v-if="totalPages > 1" :current-page="state.currentPage" :total-pages="totalPages"
               :total-products="filteredProducts.length" @page-change="goToPage" />
           </main>
         </div>
@@ -99,50 +99,54 @@
 </template>
 
 <script setup lang="ts">
-import type { Product, Category, FilterState } from '~/types'
+import type { FilterState } from '~/types'
 
 import SearchFilter from '~/components/SearchFilter.vue'
 import AdvancedFilters from '~/components/AdvancedFilters.vue'
 import ActiveFilters from '~/components/ActiveFilters.vue'
 
+// ✅ Fix: Use composable only once and destructure everything you need
+const {
+  state,
+  availableBrands,
+  priceRange,
+  filteredProducts,
+  totalPages,
+  paginatedProducts,
+  updatePriceRange  // ✅ Get updatePriceRange from the same instance
+} = useProductsFilters()
+
+// Use products API composable
 const { getAllProducts, searchProducts, getCategories, getProductsByCategory } = useProducts()
+
+// Router composables
 const route = useRoute()
 const router = useRouter()
 
-const products = ref<Product[]>([])
-const categories = ref<Category[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
-const searchQuery = ref('')
-const quickCategory = ref('')
-const sortBy = ref('')
-const viewMode = ref<'grid' | 'list'>('grid')
-const currentPage = ref(1)
-const itemsPerPage = 12
+// ✅ Add price validation helper function
+const validateAndFixPriceRange = () => {
+  const { min, max } = priceRange.value
 
-const filters = reactive<FilterState>({
-  selectedCategory: '',
-  minPrice: 0,
-  maxPrice: 2000,
-  selectedBrands: [],
-  minRating: 0
-})
+  // Clamp values to absolute bounds
+  state.filters.minPrice = Math.max(Math.min(state.filters.minPrice, max), min)
+  state.filters.maxPrice = Math.min(Math.max(state.filters.maxPrice, min), max)
 
-// Computed properties
-const availableBrands = computed(() => {
-  const brands = new Set(
-    products.value
-      .map(product => product.brand)
-      .filter(brand => brand && brand.trim() !== '')
-  )
-  return Array.from(brands).sort()
-})
+  // Fix min > max issue by swapping values
+  if (state.filters.minPrice > state.filters.maxPrice) {
+    const temp = state.filters.minPrice
+    state.filters.minPrice = state.filters.maxPrice
+    state.filters.maxPrice = temp
 
-// Scroll to products function
+    // Optional: Show user feedback
+    console.warn('Price range corrected: min and max values were swapped')
+  }
+}
+
+// Utility functions for scroll management
 const scrollToProducts = () => {
   const productsElement = document.querySelector('.products-main')
   if (productsElement) {
-    const offset = 100 // Add some offset from the top
+    const offset = 100
     const elementPosition = productsElement.getBoundingClientRect().top + window.pageYOffset
 
     window.scrollTo({
@@ -152,250 +156,236 @@ const scrollToProducts = () => {
   }
 }
 
-const priceRange = computed(() => {
-  if (products.value.length === 0) return { min: 0, max: 2000 }
+// Enhanced filter change handler (using composable state)
+const handleFilterChange = (options: {
+  updateFilters?: () => void
+  refetchProducts?: boolean
+  resetPage?: boolean
+  updateUrl?: boolean
+  scrollToTop?: boolean
+} = {}) => {
+  const {
+    updateFilters,
+    refetchProducts = false,
+    resetPage = false,
+    updateUrl = true,
+    scrollToTop = true
+  } = options
 
-  const prices = products.value.map(product =>
-    product.price - (product.price * product.discountPercentage / 100)
-  )
-  return {
-    min: Math.floor(Math.min(...prices)),
-    max: Math.ceil(Math.max(...prices))
+  // Execute filter updates if provided
+  updateFilters?.()
+
+  // Reset page if requested
+  if (resetPage) {
+    state.currentPage = 1
   }
-})
 
-const filteredProducts = computed(() => {
-  let filtered = [...products.value]
+  // Refetch products if needed
+  if (refetchProducts) {
+    fetchProducts()
+  }
 
-  // Price filter
-  if (filters.minPrice > priceRange.value.min || filters.maxPrice < priceRange.value.max) {
-    filtered = filtered.filter(product => {
-      const price = product.price - (product.price * product.discountPercentage / 100)
-      return price >= filters.minPrice && price <= filters.maxPrice
+  // Update URL if requested
+  if (updateUrl) {
+    updateURL()
+  }
+
+  // Scroll to products section if requested
+  if (scrollToTop) {
+    nextTick(() => {
+      scrollToProducts()
     })
   }
+}
 
-  // Brand filter
-  if (filters.selectedBrands.length > 0) {
-    filtered = filtered.filter(product =>
-      filters.selectedBrands.includes(product.brand)
-    )
+// ✅ Fixed filter clearing system
+type FilterType = 'category' | 'price' | 'rating' | 'sort' | 'brand' | 'search' | 'all'
+
+const clearFilter = (filterType: FilterType, data?: any) => {
+  const filterActions: Record<FilterType, () => void> = {
+    category: () => {
+      state.filters.selectedCategory = ''
+    },
+    price: () => {
+      // Use validated price range reset
+      const { min, max } = priceRange.value
+      updatePriceRange(min, max)
+    },
+    rating: () => {
+      state.filters.minRating = 0
+    },
+    sort: () => {
+      state.sortBy = ''
+    },
+    brand: () => {
+      if (data && typeof data === 'string') {
+        const index = state.filters.selectedBrands.indexOf(data)
+        if (index > -1) {
+          state.filters.selectedBrands.splice(index, 1)
+        }
+      }
+    },
+    search: () => {
+      state.searchQuery = ''
+    },
+    all: () => {
+      // Clear all filters at once with validation
+      const { min, max } = priceRange.value
+
+      state.searchQuery = ''
+      state.filters.selectedCategory = ''
+      state.filters.selectedBrands = []
+      state.filters.minRating = 0
+      state.sortBy = ''
+      state.currentPage = 1
+
+      // Use validated price reset
+      updatePriceRange(min, max)
+    }
   }
 
-  // Rating filter
-  if (filters.minRating > 0) {
-    filtered = filtered.filter(product => product.rating >= filters.minRating)
+  // Execute the appropriate filter action
+  const action = filterActions[filterType]
+  if (action) {
+    handleFilterChange({
+      updateFilters: action,
+      refetchProducts: ['category', 'search', 'all'].includes(filterType),
+      resetPage: ['category', 'search', 'all'].includes(filterType)
+    })
   }
+}
 
-  return filtered
-})
-
-const sortedProducts = computed(() => {
-  if (!sortBy.value) return filteredProducts.value
-
-  const sorted = [...filteredProducts.value]
-
-  switch (sortBy.value) {
-    case 'price-low':
-      return sorted.sort((a, b) => a.price - b.price)
-    case 'price-high':
-      return sorted.sort((a, b) => b.price - a.price)
-    case 'rating':
-      return sorted.sort((a, b) => b.rating - a.rating)
-    case 'name':
-      return sorted.sort((a, b) => a.title.localeCompare(b.title))
-    default:
-      return sorted
-  }
-})
-
-// Pagination computed properties
-const totalPages = computed(() => Math.ceil(sortedProducts.value.length / itemsPerPage))
-
-const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  const end = start + itemsPerPage
-  return sortedProducts.value.slice(start, end)
-})
-
-// Event handlers
+// Event handlers (using composable state)
 const handleSearch = (query: string) => {
-  searchQuery.value = query
-  currentPage.value = 1
-  fetchProducts()
-  updateURL()
-  nextTick(() => {
-    scrollToProducts()
+  handleFilterChange({
+    updateFilters: () => {
+      state.searchQuery = query
+    },
+    refetchProducts: true,
+    resetPage: true
   })
 }
 
 const handleClearSearch = () => {
-  searchQuery.value = ''
-  fetchProducts()
-  updateURL()
+  clearFilter('search')
 }
 
+// ✅ Fixed handleFiltersUpdate with validation
 const handleFiltersUpdate = (newFilters: FilterState) => {
-  Object.assign(filters, newFilters)
-  quickCategory.value = newFilters.selectedCategory
-  currentPage.value = 1
-  fetchProducts()
-  updateURL()
-  nextTick(() => {
-    scrollToProducts()
+  handleFilterChange({
+    updateFilters: () => {
+      Object.assign(state.filters, newFilters)
+      // Add validation after filter update
+      validateAndFixPriceRange()
+    },
+    refetchProducts: true,
+    resetPage: true
   })
 }
 
-// Methods
+// Clear functions (using the generic system)
+const clearCategory = () => clearFilter('category')
+const clearPriceFilter = () => clearFilter('price')
+const clearRatingFilter = () => clearFilter('rating')
+const clearSort = () => clearFilter('sort')
+const removeBrand = (brand: string) => clearFilter('brand', brand)
+const clearAllFilters = () => clearFilter('all')
+
+// Pagination methods (using composable state)
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    handleFilterChange({
+      updateFilters: () => {
+        state.currentPage = page
+      },
+      refetchProducts: false,
+      scrollToTop: true
+    })
+  }
+}
+
+// Sorting handler (using composable state)
+const applySorting = () => {
+  handleFilterChange({
+    refetchProducts: false,
+    scrollToTop: true
+  })
+}
+
+// API Methods (using composable state)
 const fetchProducts = async () => {
   try {
-    loading.value = true
-    error.value = null
+    state.loading = true
+    state.error = null
 
     let response
 
-    // Get 100 Products max only
-    if (searchQuery.value.trim() && filters.selectedCategory) {
-      response = await getProductsByCategory(filters.selectedCategory, { limit: 100 })
-      const searchTerm = searchQuery.value.toLowerCase()
+    // API call logic (unchanged)
+    if (state.searchQuery.trim() && state.filters.selectedCategory) {
+      response = await getProductsByCategory(state.filters.selectedCategory, { limit: 100 })
+      const searchTerm = state.searchQuery.toLowerCase()
       response.products = response.products.filter(product =>
         product.title.toLowerCase().includes(searchTerm) ||
         product.description.toLowerCase().includes(searchTerm)
       )
-    } else if (searchQuery.value.trim()) {
-      response = await searchProducts(searchQuery.value, { limit: 100 })
-    } else if (filters.selectedCategory) {
-      response = await getProductsByCategory(filters.selectedCategory, { limit: 100 })
+    } else if (state.searchQuery.trim()) {
+      response = await searchProducts(state.searchQuery, { limit: 100 })
+    } else if (state.filters.selectedCategory) {
+      response = await getProductsByCategory(state.filters.selectedCategory, { limit: 100 })
     } else {
       response = await getAllProducts({ limit: 100 })
     }
 
-    products.value = response.products
+    state.products = response.products
 
   } catch (err: any) {
-    error.value = err.message || 'Failed to load products'
+    state.error = err.message || 'Failed to load products'
   } finally {
-    loading.value = false
+    state.loading = false
   }
 }
 
 const loadCategories = async () => {
   try {
-    categories.value = await getCategories()
+    state.categories = await getCategories()
   } catch (err) {
     console.error('Failed to load categories:', err)
   }
 }
 
-const applySorting = () => {
-  updateURL()
-}
-
-// Clear functions
-const clearCategory = () => {
-  filters.selectedCategory = ''
-  quickCategory.value = ''
-  fetchProducts()
-  updateURL()
-  nextTick(() => {
-    scrollToProducts()
-  })
-}
-
-const clearPriceFilter = () => {
-  filters.minPrice = priceRange.value.min
-  filters.maxPrice = priceRange.value.max
-  updateURL()
-  nextTick(() => {
-    scrollToProducts()
-  })
-}
-
-const clearRatingFilter = () => {
-  filters.minRating = 0
-  updateURL()
-  nextTick(() => {
-    scrollToProducts()
-  })
-}
-
-const clearSort = () => {
-  sortBy.value = ''
-  updateURL()
-  nextTick(() => {
-    scrollToProducts()
-  })
-}
-
-const removeBrand = (brand: string) => {
-  const index = filters.selectedBrands.indexOf(brand)
-  if (index > -1) {
-    filters.selectedBrands.splice(index, 1)
-    updateURL()
-    nextTick(() => {
-      scrollToProducts()
-    })
-  }
-}
-
-const clearAllFilters = () => {
-  searchQuery.value = ''
-  quickCategory.value = ''
-  filters.selectedCategory = ''
-  filters.minPrice = priceRange.value.min
-  filters.maxPrice = priceRange.value.max
-  filters.selectedBrands = []
-  filters.minRating = 0
-  sortBy.value = ''
-  currentPage.value = 1
-  fetchProducts()
-  updateURL()
-  nextTick(() => {
-    scrollToProducts()
-  })
-}
-
-// Pagination methods
-const goToPage = (page: number) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-    updateURL()
-    nextTick(() => {
-      scrollToProducts()
-    })
-  }
-}
-
-// URL management
+// URL management (using composable state)
 const updateURL = () => {
   const query: Record<string, string> = {}
 
-  if (searchQuery.value.trim()) query.q = searchQuery.value
-  if (filters.selectedCategory) query.category = filters.selectedCategory
-  if (filters.minPrice > priceRange.value.min) query.minPrice = filters.minPrice.toString()
-  if (filters.maxPrice < priceRange.value.max) query.maxPrice = filters.maxPrice.toString()
-  if (filters.selectedBrands.length > 0) query.brands = filters.selectedBrands.join(',')
-  if (filters.minRating > 0) query.rating = filters.minRating.toString()
-  if (sortBy.value) query.sort = sortBy.value
-  if (currentPage.value > 1) query.page = currentPage.value.toString()
+  if (state.searchQuery.trim()) query.q = state.searchQuery
+  if (state.filters.selectedCategory) query.category = state.filters.selectedCategory
+  if (state.filters.minPrice > priceRange.value.min) query.minPrice = state.filters.minPrice.toString()
+  if (state.filters.maxPrice < priceRange.value.max) query.maxPrice = state.filters.maxPrice.toString()
+  if (state.filters.selectedBrands.length > 0) query.brands = state.filters.selectedBrands.join(',')
+  if (state.filters.minRating > 0) query.rating = state.filters.minRating.toString()
+  if (state.sortBy) query.sort = state.sortBy
+  if (state.currentPage > 1) query.page = state.currentPage.toString()
 
   router.push({ query })
 }
 
+// ✅ Fixed parseURLParams with validation
 const parseURLParams = () => {
   const query = route.query
 
-  if (query.q) searchQuery.value = query.q as string
+  if (query.q) state.searchQuery = query.q as string
   if (query.category) {
-    filters.selectedCategory = query.category as string
-    quickCategory.value = query.category as string
+    state.filters.selectedCategory = query.category as string
   }
-  if (query.minPrice) filters.minPrice = parseInt(query.minPrice as string) || 0
-  if (query.maxPrice) filters.maxPrice = parseInt(query.maxPrice as string) || 2000
-  if (query.brands) filters.selectedBrands = (query.brands as string).split(',').filter(Boolean)
-  if (query.rating) filters.minRating = parseFloat(query.rating as string) || 0
-  if (query.sort) sortBy.value = query.sort as string
-  if (query.page) currentPage.value = parseInt(query.page as string) || 1
+  if (query.minPrice) state.filters.minPrice = parseInt(query.minPrice as string) || 0
+  if (query.maxPrice) state.filters.maxPrice = parseInt(query.maxPrice as string) || 2000
+  if (query.brands) state.filters.selectedBrands = (query.brands as string).split(',').filter(Boolean)
+  if (query.rating) state.filters.minRating = parseFloat(query.rating as string) || 0
+  if (query.sort) state.sortBy = query.sort as string
+  if (query.page) state.currentPage = parseInt(query.page as string) || 1
+
+  // ✅ Validate price range after parsing URL params
+  validateAndFixPriceRange()
 }
 
 // Initialize
